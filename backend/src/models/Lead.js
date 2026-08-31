@@ -1,0 +1,185 @@
+const mongoose = require('mongoose');
+const { normalizePhoneNumber, getCanonicalPhoneKey } = require('../utils/phoneUtils');
+
+const leadSchema = new mongoose.Schema(
+  {
+    mobileNumber: {
+      type: String,
+      required: [true, 'Mobile number is required'],
+      trim: true,
+      index: true
+    },
+    canonicalPhoneKey: {
+      type: String,
+      index: true
+    },
+    customerName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    alternateMobileNumber: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    companyName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    customerType: {
+      type: String,
+      enum: [
+        'Workshop',
+        'Mechanic',
+        'Retailer',
+        'Dealer',
+        'Service Center',
+        'Fleet',
+        'Individual',
+        'Other'
+      ],
+      default: 'Other'
+    },
+    location: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    vehicleMake: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    vehicleModel: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    vehicleYear: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    partRequired: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    partNumber: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    quantity: {
+      type: Number,
+      min: 1,
+      default: 1
+    },
+    requirementDetails: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    source: {
+      type: String,
+      enum: [
+        'Phone',
+        'WhatsApp',
+        'Walk-in',
+        'Referral',
+        'Website',
+        'Social Media',
+        'Existing Customer',
+        'Other'
+      ],
+      default: 'Phone'
+    },
+    status: {
+      type: String,
+      enum: [
+        'New',
+        'Contacted',
+        'Follow Up',
+        'Quotation',
+        'Interested',
+        'Converted',
+        'Lost'
+      ],
+      default: 'New',
+      index: true
+    },
+    priority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Urgent'],
+      default: 'Medium'
+    },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true
+    },
+    nextFollowUpDate: {
+      type: Date,
+      default: null,
+      index: true
+    },
+    lastContactedAt: {
+      type: Date,
+      default: null
+    },
+    remarks: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    lostReason: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    convertedAt: {
+      type: Date,
+      default: null
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+// Pre-save hook to normalize phone number and set canonical matching key
+leadSchema.pre('save', function (next) {
+  if (this.isModified('mobileNumber') && this.mobileNumber) {
+    this.mobileNumber = normalizePhoneNumber(this.mobileNumber);
+    this.canonicalPhoneKey = getCanonicalPhoneKey(this.mobileNumber);
+  }
+  if (this.isModified('status')) {
+    if (this.status === 'Converted' && !this.convertedAt) {
+      this.convertedAt = new Date();
+    } else if (this.status !== 'Converted') {
+      this.convertedAt = null;
+    }
+  }
+  next();
+});
+
+// Indexes for fast searching and filtering
+leadSchema.index({ customerName: 1 });
+leadSchema.index({ companyName: 1 });
+leadSchema.index({ partRequired: 1 });
+leadSchema.index({ partNumber: 1 });
+leadSchema.index({ vehicleModel: 1 });
+leadSchema.index({ createdAt: -1 });
+leadSchema.index({ nextFollowUpDate: 1, status: 1 });
+
+const Lead = mongoose.model('Lead', leadSchema);
+
+module.exports = Lead;
