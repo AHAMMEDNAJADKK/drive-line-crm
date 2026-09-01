@@ -80,6 +80,7 @@ const buildLeadFilterQuery = (user, filters = {}) => {
       { companyName: { $regex: s, $options: 'i' } },
       { partRequired: { $regex: s, $options: 'i' } },
       { partNumber: { $regex: s, $options: 'i' } },
+      { vehicleMake: { $regex: s, $options: 'i' } },
       { vehicleModel: { $regex: s, $options: 'i' } },
       { location: { $regex: s, $options: 'i' } }
     ];
@@ -102,46 +103,48 @@ const buildLeadFilterQuery = (user, filters = {}) => {
   const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const endOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59, 999);
 
-  if (filters.followUp) {
-    if (filters.followUp === 'today') {
+  const followUpVal = filters.followUp || filters.followup;
+  if (followUpVal) {
+    if (followUpVal === 'today') {
       query.nextFollowUpDate = { $gte: startOfToday, $lte: endOfToday };
       query.status = { $nin: ['Converted', 'Lost'] };
-    } else if (filters.followUp === 'tomorrow') {
+    } else if (followUpVal === 'tomorrow') {
       query.nextFollowUpDate = { $gte: startOfTomorrow, $lte: endOfTomorrow };
       query.status = { $nin: ['Converted', 'Lost'] };
-    } else if (filters.followUp === 'overdue') {
+    } else if (followUpVal === 'overdue') {
       query.nextFollowUpDate = { $lt: startOfToday, $ne: null };
       query.status = { $nin: ['Converted', 'Lost'] };
-    } else if (filters.followUp === 'upcoming') {
+    } else if (followUpVal === 'upcoming') {
       query.nextFollowUpDate = { $gt: endOfToday };
       query.status = { $nin: ['Converted', 'Lost'] };
-    } else if (filters.followUp === 'no_followup') {
+    } else if (followUpVal === 'no_followup') {
       query.nextFollowUpDate = null;
       query.status = { $nin: ['Converted', 'Lost'] };
     }
   }
 
   // 5. Date filter (creation date)
-  if (filters.date) {
-    if (filters.date === 'today') {
-      query.createdAt = { $gte: startOfToday, $lte: endOfToday };
-    } else if (filters.date === 'this_week') {
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-      startOfWeek.setHours(0, 0, 0, 0);
-      query.createdAt = { $gte: startOfWeek };
-    } else if (filters.date === 'this_month') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      query.createdAt = { $gte: startOfMonth };
-    } else if (filters.date === 'custom' && (filters.startDate || filters.endDate)) {
-      query.createdAt = {};
-      if (filters.startDate) {
-        query.createdAt.$gte = new Date(filters.startDate);
-      }
-      if (filters.endDate) {
-        const end = new Date(filters.endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
+  const startDateVal = filters.startDate || filters.dateFrom;
+  const endDateVal = filters.endDate || filters.dateTo;
+
+  if (filters.date === 'today') {
+    query.createdAt = { $gte: startOfToday, $lte: endOfToday };
+  } else if (filters.date === 'this_week') {
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    startOfWeek.setHours(0, 0, 0, 0);
+    query.createdAt = { $gte: startOfWeek };
+  } else if (filters.date === 'this_month') {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    query.createdAt = { $gte: startOfMonth };
+  } else if (startDateVal || endDateVal) {
+    query.createdAt = {};
+    if (startDateVal) {
+      query.createdAt.$gte = new Date(startDateVal);
+    }
+    if (endDateVal) {
+      const end = new Date(endDateVal);
+      end.setHours(23, 59, 59, 999);
+      query.createdAt.$lte = end;
     }
   }
 
@@ -268,32 +271,11 @@ const listLeads = async (currentUser, queryParams) => {
   const {
     page = 1,
     limit = 25,
-    search = '',
-    status,
-    priority,
-    assignedTo,
-    customerType,
-    source,
-    followUp,
-    date,
-    startDate,
-    endDate,
     sortBy = 'createdAt',
     sortOrder = 'desc'
   } = queryParams;
 
-  const query = buildLeadFilterQuery(currentUser, {
-    search,
-    status,
-    priority,
-    assignedTo,
-    customerType,
-    source,
-    followUp,
-    date,
-    startDate,
-    endDate
-  });
+  const query = buildLeadFilterQuery(currentUser, queryParams);
 
   const skip = (Number(page) - 1) * Number(limit);
   const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
@@ -311,11 +293,15 @@ const listLeads = async (currentUser, queryParams) => {
 
   return {
     leads,
+    data: leads,
+    total,
+    page: Number(page),
+    pages: Math.ceil(total / Number(limit)) || 1,
     pagination: {
       page: Number(page),
       limit: Number(limit),
       total,
-      totalPages: Math.ceil(total / Number(limit))
+      totalPages: Math.ceil(total / Number(limit)) || 1
     }
   };
 };

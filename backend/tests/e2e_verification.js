@@ -87,6 +87,26 @@ async function runTests() {
     const empAccessEmployees = await request('/employees', { token: employeeToken });
     assert(empAccessEmployees.status === 403, 'Employee is forbidden (403) from accessing /employees list');
 
+    // Create an Admin-owned lead that is not assigned to employee
+    const adminLead = await request('/leads', {
+      method: 'POST',
+      token: adminToken,
+      body: { mobileNumber: '9999911111', customerName: 'Confidential Corp', vehicleModel: 'Mercedes E-Class' },
+    });
+    assert(adminLead.status === 201, 'Admin created confidential unassigned lead');
+    const adminLeadId = adminLead.data.data._id;
+
+    // Verify employee cannot view admin lead follow-ups
+    const empViewFollowups = await request(`/leads/${adminLeadId}/followups`, { token: employeeToken });
+    assert(empViewFollowups.status === 403, 'Employee is forbidden (403) from viewing followups of another employee/admin lead');
+
+    // Verify employee cannot export PDF dossier of admin lead
+    const empExportPdf = await request(`/leads/${adminLeadId}/export/pdf`, { token: employeeToken });
+    assert(empExportPdf.status === 403, 'Employee is forbidden (403) from exporting PDF dossier of another user lead');
+
+    // Clean up admin confidential lead
+    await request(`/leads/${adminLeadId}`, { method: 'DELETE', token: adminToken });
+
     // 5. Lead Lifecycle (Fast creation, Duplicate check, Full fields, Follow-up, Pipeline)
     console.log('\n5. Testing Lead Lifecycle & Duplicate Detection:');
     const testMobile = '9876500001';
@@ -158,6 +178,10 @@ async function runTests() {
       body: { status: 'Converted' },
     });
     assert(convertLead.status === 200 && convertLead.data.data.convertedAt !== null, 'Lead converted and convertedAt timestamp is set');
+
+    // Test query filters with both status and followup
+    const filteredList = await request('/leads?status=Converted&search=Toyota', { token: adminToken });
+    assert(filteredList.status === 200 && filteredList.data.total >= 1, 'Filter query (status=Converted & search=Toyota) successfully filters leads');
 
     // 6. Employee Management (Admin)
     console.log('\n6. Testing Employee Management (Admin):');

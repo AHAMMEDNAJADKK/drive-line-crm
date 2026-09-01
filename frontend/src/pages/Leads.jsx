@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, SlidersHorizontal, Download, FileText } from 'lucide-react';
+import { Plus, SlidersHorizontal, Download, FileText, Upload } from 'lucide-react';
 import {
   getLeadsApi, deleteLeadApi, updateLeadStatusApi, assignLeadApi,
   exportExcelApi, exportPDFApi
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import LeadTable from '../components/leads/LeadTable';
 import LeadFiltersDrawer from '../components/leads/LeadFiltersDrawer';
 import QuickLeadModal from '../components/leads/QuickLeadModal';
+import ImportModal from '../components/leads/ImportModal';
 import SearchInput from '../components/common/SearchInput';
 import Pagination from '../components/common/Pagination';
 import { LoadingState, ErrorState, EmptyState } from '../components/common/States';
@@ -28,6 +29,7 @@ export default function Leads() {
   const [error, setError] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [quickLeadOpen, setQuickLeadOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Build query from URL params
   const buildQuery = useCallback(() => {
@@ -51,11 +53,16 @@ export default function Leads() {
     setError('');
     try {
       const res = await getLeadsApi(buildQuery());
-      setLeads(res.data.data || []);
+      const list = res.data.data || res.data.leads || [];
+      const totalCount = res.data.total ?? res.data.pagination?.total ?? list.length;
+      const totalPages = res.data.pages ?? res.data.pagination?.totalPages ?? 1;
+      const curPage = res.data.page ?? res.data.pagination?.page ?? 1;
+
+      setLeads(list);
       setPagination({
-        total: res.data.total || 0,
-        page: res.data.page || 1,
-        pages: res.data.pages || 1,
+        total: totalCount,
+        page: curPage,
+        pages: totalPages,
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load leads.');
@@ -127,35 +134,51 @@ export default function Leads() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Add Lead */}
+          <button
+            onClick={() => setQuickLeadOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Lead</span>
+          </button>
+
+          {/* Import Leads (Admin & Manager) */}
+          {user?.role !== 'employee' && (
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title="Import Leads from Excel/CSV"
+            >
+              <Upload className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Import Leads</span>
+            </button>
+          )}
+
           {/* Export buttons — admin/manager only */}
           {user?.role !== 'employee' && (
             <>
               <button
                 onClick={handleExportExcel}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                title="Export Excel"
+                title="Export Filtered Leads to Excel"
               >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Excel</span>
+                <span className="hidden sm:inline">Export Excel</span>
+                <span className="sm:hidden">Excel</span>
               </button>
               <button
                 onClick={handleExportPDF}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                title="Export PDF"
+                title="Export Filtered Leads to Landscape PDF"
               >
                 <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">PDF</span>
+                <span className="hidden sm:inline">Export PDF</span>
+                <span className="sm:hidden">PDF</span>
               </button>
             </>
           )}
-          <button
-            onClick={() => setQuickLeadOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Lead
-          </button>
         </div>
       </div>
 
@@ -242,6 +265,11 @@ export default function Leads() {
           loadLeads();
           navigate(`/leads/${lead._id}`);
         }}
+      />
+      <ImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={loadLeads}
       />
     </div>
   );

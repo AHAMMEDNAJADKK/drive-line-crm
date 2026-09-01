@@ -81,9 +81,24 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
 };
 
 /**
- * Get all follow-ups for a lead
+ * Get all follow-ups for a lead (with RBAC check)
  */
-const getFollowupsByLead = async (leadId) => {
+const getFollowupsByLead = async (leadId, currentUser) => {
+  const Lead = require('../models/Lead');
+  const lead = await Lead.findById(leadId);
+  if (!lead) {
+    throw new Error('Lead not found');
+  }
+
+  // Check role authorization for single lead
+  if (currentUser && currentUser.role === 'employee') {
+    const isAssigned = lead.assignedTo && lead.assignedTo.toString() === currentUser._id.toString();
+    const isCreator = lead.createdBy && lead.createdBy.toString() === currentUser._id.toString();
+    if (!isAssigned && !isCreator) {
+      throw new Error('Unauthorized to view follow-ups for this lead');
+    }
+  }
+
   const followups = await LeadFollowup.find({ leadId })
     .populate('createdBy', 'name employeeId role')
     .sort({ createdAt: -1 })

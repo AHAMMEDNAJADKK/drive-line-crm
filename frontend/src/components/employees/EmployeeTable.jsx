@@ -60,7 +60,7 @@ export default function EmployeeTable({
                   <UserStatusBadge status={emp.status} />
                 </td>
                 <td className="px-6 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {emp.assignedLeadsCount || 0}
+                  {emp.leadsAssigned ?? emp.assignedLeadsCount ?? 0}
                 </td>
                 <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
                   {formatDateTime(emp.lastLogin)}
@@ -149,7 +149,7 @@ export default function EmployeeTable({
               <div className="text-gray-500">
                 Assigned Leads:{' '}
                 <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                  {emp.assignedLeadsCount || 0}
+                  {emp.leadsAssigned ?? emp.assignedLeadsCount ?? 0}
                 </span>
               </div>
               <div className="text-gray-500">

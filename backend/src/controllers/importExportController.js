@@ -69,6 +69,7 @@ const exportSingleLeadPDF = async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
+    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };

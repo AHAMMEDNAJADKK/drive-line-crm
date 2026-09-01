@@ -45,16 +45,21 @@ const listEmployees = async ({ page = 1, limit = 25, search = '', role, status }
 
   const enrichedUsers = users.map((u) => ({
     ...u,
-    leadsAssigned: leadCountMap[u._id.toString()] || 0
+    leadsAssigned: leadCountMap[u._id.toString()] || 0,
+    assignedLeadsCount: leadCountMap[u._id.toString()] || 0
   }));
 
   return {
     employees: enrichedUsers,
+    data: enrichedUsers,
+    total,
+    page: Number(page),
+    pages: Math.ceil(total / Number(limit)) || 1,
     pagination: {
       page: Number(page),
       limit: Number(limit),
       total,
-      totalPages: Math.ceil(total / Number(limit))
+      totalPages: Math.ceil(total / Number(limit)) || 1
     }
   };
 };
@@ -67,7 +72,8 @@ const getEmployeeById = async (id) => {
   const leadsCount = await Lead.countDocuments({ assignedTo: id });
   return {
     ...user,
-    leadsAssigned: leadsCount
+    leadsAssigned: leadsCount,
+    assignedLeadsCount: leadsCount
   };
 };
 

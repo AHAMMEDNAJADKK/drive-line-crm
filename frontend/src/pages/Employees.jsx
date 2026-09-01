@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Users, KeyRound } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   getEmployeesApi, createEmployeeApi, updateEmployeeApi,
   toggleEmployeeStatusApi, resetEmployeePasswordApi
@@ -47,11 +47,17 @@ export default function Employees() {
         page,
         limit: 15,
       });
-      setEmployees(res.data.data || []);
+
+      const list = res.data.data || res.data.employees || [];
+      const totalCount = res.data.total ?? res.data.pagination?.total ?? list.length;
+      const totalPages = res.data.pages ?? res.data.pagination?.totalPages ?? 1;
+      const curPage = res.data.page ?? res.data.pagination?.page ?? 1;
+
+      setEmployees(list);
       setPagination({
-        total: res.data.total || 0,
-        page: res.data.page || 1,
-        pages: res.data.pages || 1,
+        total: totalCount,
+        page: curPage,
+        pages: totalPages,
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch employees');
@@ -76,7 +82,7 @@ export default function Employees() {
       }
       setFormOpen(false);
       setEditingEmployee(null);
-      fetchEmployees();
+      await fetchEmployees();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Operation failed');
     } finally {
@@ -88,7 +94,7 @@ export default function Employees() {
     try {
       await toggleEmployeeStatusApi(id, status);
       toast.success(`Employee ${status === 'active' ? 'activated' : 'deactivated'}`);
-      fetchEmployees();
+      await fetchEmployees();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Status change failed');
     }

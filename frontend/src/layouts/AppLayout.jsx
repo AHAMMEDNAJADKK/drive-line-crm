@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, UserSquare2, FileSpreadsheet, LogOut,
+  LayoutDashboard, Users, UserSquare2, LogOut,
   Menu, X, Sun, Moon, ChevronRight, Plus, Car
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -46,7 +46,6 @@ export default function AppLayout() {
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/leads', icon: UserSquare2, label: 'Leads' },
     ...(user?.role !== 'employee' ? [{ to: '/employees', icon: Users, label: 'Employees' }] : []),
-    ...(user?.role !== 'employee' ? [{ to: '/import-export', icon: FileSpreadsheet, label: 'Import / Export' }] : []),
   ];
 
   const navLinkClass = ({ isActive }) =>

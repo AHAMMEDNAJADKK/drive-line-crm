@@ -10,7 +10,6 @@ import Leads from './pages/Leads';
 import LeadDetail from './pages/LeadDetail';
 import Employees from './pages/Employees';
 import EmployeeDetail from './pages/EmployeeDetail';
-import ImportExport from './pages/ImportExport';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
@@ -48,7 +47,6 @@ function AppRoutes() {
           <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
             <Route path="/employees" element={<Employees />} />
             <Route path="/employees/:id" element={<EmployeeDetail />} />
-            <Route path="/import-export" element={<ImportExport />} />
           </Route>
         </Route>
       </Route>
