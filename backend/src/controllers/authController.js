@@ -2,11 +2,12 @@ const authService = require('../services/authService');
 
 const login = async (req, res, next) => {
   try {
-    const { identifier, password } = req.body;
+    const identifier = req.body.identifier || req.body.email || req.body.employeeId || req.body.username;
+    const { password } = req.body;
     const result = await authService.login({ identifier, password });
     res.json({ success: true, message: 'Login successful', ...result });
   } catch (err) {
-    res.status(401).json({ success: false, message: err.message });
+    res.status(401).json({ success: false, message: err.message || 'Invalid credentials' });
   }
 };
 

@@ -7,8 +7,24 @@ export function EmptyState({ icon: Icon, title, description, action }) {
         </div>
       )}
       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-      {description && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-sm">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      {description && (
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 max-w-sm">{description}</p>
+      )}
+      {action && (
+        <div className="mt-5">
+          {typeof action === 'object' && action !== null && 'label' in action && 'onClick' in action ? (
+            <button
+              type="button"
+              onClick={action.onClick}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
+            >
+              {action.label}
+            </button>
+          ) : (
+            action
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -21,6 +37,8 @@ export function LoadingSpinner({ message = 'Loading...' }) {
     </div>
   );
 }
+
+export const LoadingState = LoadingSpinner;
 
 export function ErrorState({ message = 'Something went wrong', onRetry }) {
   return (

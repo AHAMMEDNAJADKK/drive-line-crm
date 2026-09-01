@@ -13,9 +13,13 @@ const addFollowup = async (req, res) => {
 
 const getFollowups = async (req, res) => {
   try {
-    const followups = await followupService.getFollowupsByLead(req.params.id);
+    const followups = await followupService.getFollowupsByLead(req.params.id, req.user);
     res.json({ success: true, data: followups });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
+    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 module.exports = { addFollowup, getFollowups };

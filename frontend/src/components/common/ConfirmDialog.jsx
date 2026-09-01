@@ -1,7 +1,27 @@
 import { AlertTriangle } from 'lucide-react';
 
-export default function ConfirmDialog({ isOpen, onClose, onConfirm, title, message, confirmLabel = 'Confirm', confirmClass = 'bg-red-600 hover:bg-red-500 text-white', loading = false }) {
+export default function ConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title = 'Are you sure?',
+  message = 'This action cannot be undone.',
+  confirmLabel,
+  confirmText,
+  confirmClass,
+  type = 'danger',
+  loading = false,
+}) {
   if (!isOpen) return null;
+
+  const label = confirmLabel || confirmText || 'Confirm';
+  const defaultButtonClass =
+    type === 'danger'
+      ? 'bg-red-600 hover:bg-red-500 text-white'
+      : 'bg-indigo-600 hover:bg-indigo-500 text-white';
+
+  const btnClass = confirmClass || defaultButtonClass;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -17,6 +37,7 @@ export default function ConfirmDialog({ isOpen, onClose, onConfirm, title, messa
         </div>
         <div className="mt-5 flex gap-2 justify-end">
           <button
+            type="button"
             onClick={onClose}
             disabled={loading}
             className="px-4 py-2 rounded-xl bg-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -24,11 +45,12 @@ export default function ConfirmDialog({ isOpen, onClose, onConfirm, title, messa
             Cancel
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${confirmClass}`}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${btnClass}`}
           >
-            {loading ? 'Processing...' : confirmLabel}
+            {loading ? 'Processing...' : label}
           </button>
         </div>
       </div>

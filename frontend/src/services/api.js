@@ -3,7 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: '/api',
   timeout: 30000,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Request interceptor — attach token
@@ -23,10 +23,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('dl_token');
-      localStorage.removeItem('dl_user');
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      // Avoid redirecting in an infinite loop or during login attempt failure
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      if (!isLoginRequest) {
+        localStorage.removeItem('dl_token');
+        localStorage.removeItem('dl_user');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
