@@ -1,81 +1,151 @@
 const User = require('../models/User');
 const Lead = require('../models/Lead');
+const { assertObjectId } = require('../utils/ids');
 
-const listEmployees = async ({ page = 1, limit = 25, search = '', role, status }) => {
+const VALID_ROLES = ['admin', 'manager', 'employee'];
+const VALID_STATUSES = ['active', 'inactive'];
+
+const normalizeString = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+};
+
+const normalizeEmail = (value) => normalizeString(value).toLowerCase();
+
+const normalizeEmployeeId = (value) =>
+  normalizeString(value).toUpperCase();
+
+const listEmployees = async ({
+  page = 1,
+  limit = 25,
+  search = '',
+  role,
+  status
+}) => {
+  let currentPage = Number(page);
+  let currentLimit = Number(limit);
+
+  if (!Number.isFinite(currentPage) || currentPage < 1) {
+    currentPage = 1;
+  }
+
+  if (!Number.isFinite(currentLimit) || currentLimit < 1) {
+    currentLimit = 25;
+  }
+
+  // Prevent excessively large requests.
+  currentLimit = Math.min(currentLimit, 100);
+
   const query = {};
 
-  if (search) {
-    const s = search.trim();
+  const searchText = normalizeString(search);
+
+  if (searchText) {
     query.$or = [
-      { name: { $regex: s, $options: 'i' } },
-      { email: { $regex: s, $options: 'i' } },
-      { phone: { $regex: s, $options: 'i' } },
-      { employeeId: { $regex: s, $options: 'i' } },
-      { branch: { $regex: s, $options: 'i' } },
-      { position: { $regex: s, $options: 'i' } },
-      { garageShop: { $regex: s, $options: 'i' } }
+      { name: { $regex: searchText, $options: 'i' } },
+      { email: { $regex: searchText, $options: 'i' } },
+      { phone: { $regex: searchText, $options: 'i' } },
+      { employeeId: { $regex: searchText, $options: 'i' } },
+      { branch: { $regex: searchText, $options: 'i' } },
+      { position: { $regex: searchText, $options: 'i' } },
+      { garageShop: { $regex: searchText, $options: 'i' } }
     ];
   }
 
   if (role) {
+    if (!VALID_ROLES.includes(role)) {
+      throw new Error('Invalid role');
+    }
+
     query.role = role;
   }
 
   if (status) {
+    if (!VALID_STATUSES.includes(status)) {
+      throw new Error('Invalid staff status');
+    }
+
     query.status = status;
   }
 
-  const skip = (Number(page) - 1) * Number(limit);
+  const skip = (currentPage - 1) * currentLimit;
+
   const total = await User.countDocuments(query);
 
   const users = await User.find(query)
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(Number(limit))
+    .limit(currentLimit)
     .lean();
 
-  // Aggregate leads count per employee
-  const userIds = users.map((u) => u._id);
-  const leadCounts = await Lead.aggregate([
-    { $match: { assignedTo: { $in: userIds } } },
-    { $group: { _id: '$assignedTo', count: { $sum: 1 } } }
-  ]);
+  // Count leads assigned to each employee.
+  const userIds = users.map((user) => user._id);
+
+  let leadCounts = [];
+
+  if (userIds.length > 0) {
+    leadCounts = await Lead.aggregate([
+      {
+        $match: {
+          assignedTo: { $in: userIds }
+        }
+      },
+      {
+        $group: {
+          _id: '$assignedTo',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+  }
 
   const leadCountMap = {};
-  leadCounts.forEach((lc) => {
-    leadCountMap[lc._id.toString()] = lc.count;
+
+  leadCounts.forEach((item) => {
+    leadCountMap[item._id.toString()] = item.count;
   });
 
-  const enrichedUsers = users.map((u) => ({
-    ...u,
-    leadsAssigned: leadCountMap[u._id.toString()] || 0,
-    assignedLeadsCount: leadCountMap[u._id.toString()] || 0
-  }));
+  const enrichedUsers = users.map((user) => {
+    const leadsAssigned =
+      leadCountMap[user._id.toString()] || 0;
+
+    return {
+      ...user,
+      leadsAssigned,
+      assignedLeadsCount: leadsAssigned
+    };
+  });
+
+  const totalPages = Math.ceil(total / currentLimit) || 1;
 
   return {
     employees: enrichedUsers,
     data: enrichedUsers,
     total,
-    page: Number(page),
-    pages: Math.ceil(total / Number(limit)) || 1,
+    page: currentPage,
+    pages: totalPages,
     pagination: {
-      page: Number(page),
-      limit: Number(limit),
+      page: currentPage,
+      limit: currentLimit,
       total,
-      totalPages: Math.ceil(total / Number(limit)) || 1
+      totalPages
     }
   };
 };
 
-const { assertObjectId } = require('../utils/ids');
-
 const getEmployeeById = async (id) => {
   assertObjectId(id, 'staff id');
+
   const user = await User.findById(id).lean();
+
   if (!user) {
     throw new Error('Employee not found');
   }
-  const leadsCount = await Lead.countDocuments({ assignedTo: id });
+
+  const leadsCount = await Lead.countDocuments({
+    assignedTo: id
+  });
+
   return {
     ...user,
     leadsAssigned: leadsCount,
@@ -84,115 +154,291 @@ const getEmployeeById = async (id) => {
 };
 
 const createEmployee = async ({
-  name, email, phone, employeeId, role, status, password,
-  idDetails, passportNumber, branch, position, garageShop
+  name,
+  email,
+  phone,
+  employeeId,
+  role,
+  status,
+  password,
+  idDetails,
+  passportNumber,
+  branch,
+  position,
+  garageShop
 }) => {
-  if (!name || !String(name).trim()) throw new Error('Name is required');
-  if (!email || !String(email).trim()) throw new Error('Email is required');
-  if (!employeeId || !String(employeeId).trim()) throw new Error('Staff ID is required');
-  if (password && String(password).length < 6) throw new Error('Password must be at least 6 characters long');
-  if (!['admin', 'manager', 'employee'].includes(role || 'employee')) throw new Error('Invalid role');
-  if (status && !['active', 'inactive'].includes(status)) throw new Error('Invalid staff status');
+  const cleanName = normalizeString(name);
+  const cleanEmail = normalizeEmail(email);
+  const cleanEmployeeId = normalizeEmployeeId(employeeId);
 
-  const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
-  if (existingEmail) {
-    throw new Error('A staff member with this email already exists');
+  if (!cleanName) {
+    throw new Error('Name is required');
   }
 
-  const existingId = await User.findOne({ employeeId: employeeId.toUpperCase().trim() });
+  if (!cleanEmail) {
+    throw new Error('Email is required');
+  }
+
+  if (!cleanEmployeeId) {
+    throw new Error('Staff ID is required');
+  }
+
+  if (password !== undefined && password !== null) {
+    if (String(password).length < 6) {
+      throw new Error(
+        'Password must be at least 6 characters long'
+      );
+    }
+  }
+
+  const selectedRole = role || 'employee';
+
+  if (!VALID_ROLES.includes(selectedRole)) {
+    throw new Error('Invalid role');
+  }
+
+  const selectedStatus = status || 'active';
+
+  if (!VALID_STATUSES.includes(selectedStatus)) {
+    throw new Error('Invalid staff status');
+  }
+
+  const existingEmail = await User.findOne({
+    email: cleanEmail
+  });
+
+  if (existingEmail) {
+    throw new Error(
+      'A staff member with this email already exists'
+    );
+  }
+
+  const existingId = await User.findOne({
+    employeeId: cleanEmployeeId
+  });
+
   if (existingId) {
-    throw new Error('A staff member with this Staff ID already exists');
+    throw new Error(
+      'A staff member with this Staff ID already exists'
+    );
   }
 
   const newEmployee = new User({
-    name: name.trim(),
-    email: email.toLowerCase().trim(),
-    phone: phone ? phone.trim() : '',
-    employeeId: employeeId.toUpperCase().trim(),
-    idDetails: idDetails ? String(idDetails).trim() : '',
-    passportNumber: passportNumber ? String(passportNumber).trim() : '',
-    branch: branch ? String(branch).trim() : '',
-    position: position ? String(position).trim() : '',
-    garageShop: garageShop ? String(garageShop).trim() : '',
-    role: role || 'employee',
-    status: status || 'active',
-    password: password || 'Driveline@123'
+    name: cleanName,
+    email: cleanEmail,
+    phone: normalizeString(phone),
+    employeeId: cleanEmployeeId,
+    idDetails: normalizeString(idDetails),
+    passportNumber: normalizeString(passportNumber),
+    branch: normalizeString(branch),
+    position: normalizeString(position),
+    garageShop: normalizeString(garageShop),
+    role: selectedRole,
+    status: selectedStatus,
+
+    // Keep the existing CRM default password behavior.
+    password:
+      password !== undefined &&
+      password !== null &&
+      String(password).length > 0
+        ? String(password)
+        : 'Driveline@123'
   });
 
   await newEmployee.save();
+
   return newEmployee.toJSON();
 };
 
-const updateEmployee = async (id, {
-  name, email, phone, employeeId, role, status,
-  idDetails, passportNumber, branch, position, garageShop
-}) => {
+const updateEmployee = async (
+  id,
+  {
+    name,
+    email,
+    phone,
+    employeeId,
+    role,
+    status,
+    idDetails,
+    passportNumber,
+    branch,
+    position,
+    garageShop
+  }
+) => {
+  assertObjectId(id, 'staff id');
+
   const user = await User.findById(id);
+
   if (!user) {
     throw new Error('Employee not found');
   }
 
-  if (email && email.toLowerCase().trim() !== user.email) {
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existing && existing._id.toString() !== id) {
-      throw new Error('Email is already in use by another user');
+  if (email !== undefined) {
+    const cleanEmail = normalizeEmail(email);
+
+    if (!cleanEmail) {
+      throw new Error('Email is required');
     }
-    user.email = email.toLowerCase().trim();
+
+    if (cleanEmail !== user.email) {
+      const existing = await User.findOne({
+        email: cleanEmail
+      });
+
+      if (
+        existing &&
+        existing._id.toString() !== id
+      ) {
+        throw new Error(
+          'Email is already in use by another user'
+        );
+      }
+
+      user.email = cleanEmail;
+    }
   }
 
-  if (employeeId && employeeId.toUpperCase().trim() !== user.employeeId) {
-    const existing = await User.findOne({ employeeId: employeeId.toUpperCase().trim() });
-    if (existing && existing._id.toString() !== id) {
-      throw new Error('Employee ID is already in use');
+  if (employeeId !== undefined) {
+    const cleanEmployeeId =
+      normalizeEmployeeId(employeeId);
+
+    if (!cleanEmployeeId) {
+      throw new Error('Staff ID is required');
     }
-    user.employeeId = employeeId.toUpperCase().trim();
+
+    if (cleanEmployeeId !== user.employeeId) {
+      const existing = await User.findOne({
+        employeeId: cleanEmployeeId
+      });
+
+      if (
+        existing &&
+        existing._id.toString() !== id
+      ) {
+        throw new Error(
+          'Employee ID is already in use'
+        );
+      }
+
+      user.employeeId = cleanEmployeeId;
+    }
   }
 
-  if (name) user.name = name.trim();
-  if (phone !== undefined) user.phone = phone ? phone.trim() : '';
-  if (role) {
-    if (!['admin', 'manager', 'employee'].includes(role)) throw new Error('Invalid role');
+  if (name !== undefined) {
+    const cleanName = normalizeString(name);
+
+    if (!cleanName) {
+      throw new Error('Name is required');
+    }
+
+    user.name = cleanName;
+  }
+
+  if (phone !== undefined) {
+    user.phone = normalizeString(phone);
+  }
+
+  if (role !== undefined) {
+    if (!VALID_ROLES.includes(role)) {
+      throw new Error('Invalid role');
+    }
+
     user.role = role;
   }
-  if (status) {
-    if (!['active', 'inactive'].includes(status)) throw new Error('Invalid staff status');
+
+  if (status !== undefined) {
+    if (!VALID_STATUSES.includes(status)) {
+      throw new Error('Invalid staff status');
+    }
+
     user.status = status;
   }
-  if (idDetails !== undefined) user.idDetails = idDetails ? String(idDetails).trim() : '';
-  if (passportNumber !== undefined) user.passportNumber = passportNumber ? String(passportNumber).trim() : '';
-  if (branch !== undefined) user.branch = branch ? String(branch).trim() : '';
-  if (position !== undefined) user.position = position ? String(position).trim() : '';
-  if (garageShop !== undefined) user.garageShop = garageShop ? String(garageShop).trim() : '';
+
+  if (idDetails !== undefined) {
+    user.idDetails = normalizeString(idDetails);
+  }
+
+  if (passportNumber !== undefined) {
+    user.passportNumber =
+      normalizeString(passportNumber);
+  }
+
+  if (branch !== undefined) {
+    user.branch = normalizeString(branch);
+  }
+
+  if (position !== undefined) {
+    user.position = normalizeString(position);
+  }
+
+  if (garageShop !== undefined) {
+    user.garageShop =
+      normalizeString(garageShop);
+  }
 
   await user.save();
+
   return user.toJSON();
 };
 
 const toggleEmployeeStatus = async (id, status) => {
+  assertObjectId(id, 'staff id');
+
+  if (!VALID_STATUSES.includes(status)) {
+    throw new Error('Invalid staff status');
+  }
+
   const user = await User.findById(id);
+
   if (!user) {
     throw new Error('Employee not found');
   }
+
   user.status = status;
+
   await user.save();
+
   return user.toJSON();
 };
 
-const resetEmployeePassword = async (id, newPassword) => {
+const resetEmployeePassword = async (
+  id,
+  newPassword
+) => {
+  assertObjectId(id, 'staff id');
+
   const user = await User.findById(id);
+
   if (!user) {
     throw new Error('Employee not found');
   }
-  if (!newPassword || newPassword.length < 6) {
-    throw new Error('Password must be at least 6 characters long');
+
+  if (
+    !newPassword ||
+    String(newPassword).length < 6
+  ) {
+    throw new Error(
+      'Password must be at least 6 characters long'
+    );
   }
-  user.password = newPassword;
+
+  user.password = String(newPassword);
+
   await user.save();
-  return { message: 'Password reset successfully' };
+
+  return {
+    message: 'Password reset successfully'
+  };
 };
 
 const getActiveEmployeesList = async () => {
-  return User.find({ status: 'active' }).select('_id name email employeeId role').sort({ name: 1 }).lean();
+  return User.find({
+    status: 'active'
+  })
+    .select('_id name email employeeId role')
+    .sort({ name: 1 })
+    .lean();
 };
 
 module.exports = {

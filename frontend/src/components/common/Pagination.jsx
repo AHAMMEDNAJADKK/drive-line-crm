@@ -1,9 +1,20 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function Pagination({ page, totalPages, total, limit, onPageChange }) {
+/**
+ * Accepts either naming convention so existing callers keep working:
+ *   page / total / limit            (original)
+ *   currentPage / totalItems / itemsPerPage  (used by Leads.jsx, Employees.jsx, etc.)
+ */
+export default function Pagination(props) {
+  const page = props.page ?? props.currentPage ?? 1;
+  const totalPages = props.totalPages ?? 1;
+  const total = props.total ?? props.totalItems ?? 0;
+  const limit = props.limit ?? props.itemsPerPage ?? 25;
+  const onPageChange = props.onPageChange;
+
   if (totalPages <= 1) return null;
 
-  const start = (page - 1) * limit + 1;
+  const start = total === 0 ? 0 : (page - 1) * limit + 1;
   const end = Math.min(page * limit, total);
 
   const pages = [];
