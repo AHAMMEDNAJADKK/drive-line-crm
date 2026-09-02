@@ -22,11 +22,36 @@ const userSchema = new mongoose.Schema(
     },
     employeeId: {
       type: String,
-      required: [true, 'Employee ID is required'],
+      required: [true, 'Staff ID is required'],
       unique: true,
       trim: true,
       uppercase: true,
       index: true
+    },
+    idDetails: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    passportNumber: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    branch: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    position: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    garageShop: {
+      type: String,
+      trim: true,
+      default: ''
     },
     role: {
       type: String,

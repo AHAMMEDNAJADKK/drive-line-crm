@@ -10,7 +10,10 @@ const listEmployees = async ({ page = 1, limit = 25, search = '', role, status }
       { name: { $regex: s, $options: 'i' } },
       { email: { $regex: s, $options: 'i' } },
       { phone: { $regex: s, $options: 'i' } },
-      { employeeId: { $regex: s, $options: 'i' } }
+      { employeeId: { $regex: s, $options: 'i' } },
+      { branch: { $regex: s, $options: 'i' } },
+      { position: { $regex: s, $options: 'i' } },
+      { garageShop: { $regex: s, $options: 'i' } }
     ];
   }
 
@@ -64,7 +67,10 @@ const listEmployees = async ({ page = 1, limit = 25, search = '', role, status }
   };
 };
 
+const { assertObjectId } = require('../utils/ids');
+
 const getEmployeeById = async (id) => {
+  assertObjectId(id, 'staff id');
   const user = await User.findById(id).lean();
   if (!user) {
     throw new Error('Employee not found');
@@ -77,17 +83,25 @@ const getEmployeeById = async (id) => {
   };
 };
 
-const createEmployee = async ({ name, email, phone, employeeId, role, status, password }) => {
-  // Check unique email
+const createEmployee = async ({
+  name, email, phone, employeeId, role, status, password,
+  idDetails, passportNumber, branch, position, garageShop
+}) => {
+  if (!name || !String(name).trim()) throw new Error('Name is required');
+  if (!email || !String(email).trim()) throw new Error('Email is required');
+  if (!employeeId || !String(employeeId).trim()) throw new Error('Staff ID is required');
+  if (password && String(password).length < 6) throw new Error('Password must be at least 6 characters long');
+  if (!['admin', 'manager', 'employee'].includes(role || 'employee')) throw new Error('Invalid role');
+  if (status && !['active', 'inactive'].includes(status)) throw new Error('Invalid staff status');
+
   const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
   if (existingEmail) {
-    throw new Error('An employee with this email already exists');
+    throw new Error('A staff member with this email already exists');
   }
 
-  // Check unique employeeId
   const existingId = await User.findOne({ employeeId: employeeId.toUpperCase().trim() });
   if (existingId) {
-    throw new Error('An employee with this Employee ID already exists');
+    throw new Error('A staff member with this Staff ID already exists');
   }
 
   const newEmployee = new User({
@@ -95,16 +109,24 @@ const createEmployee = async ({ name, email, phone, employeeId, role, status, pa
     email: email.toLowerCase().trim(),
     phone: phone ? phone.trim() : '',
     employeeId: employeeId.toUpperCase().trim(),
+    idDetails: idDetails ? String(idDetails).trim() : '',
+    passportNumber: passportNumber ? String(passportNumber).trim() : '',
+    branch: branch ? String(branch).trim() : '',
+    position: position ? String(position).trim() : '',
+    garageShop: garageShop ? String(garageShop).trim() : '',
     role: role || 'employee',
     status: status || 'active',
-    password: password || 'Driveline@123' // default password if not specified
+    password: password || 'Driveline@123'
   });
 
   await newEmployee.save();
   return newEmployee.toJSON();
 };
 
-const updateEmployee = async (id, { name, email, phone, employeeId, role, status }) => {
+const updateEmployee = async (id, {
+  name, email, phone, employeeId, role, status,
+  idDetails, passportNumber, branch, position, garageShop
+}) => {
   const user = await User.findById(id);
   if (!user) {
     throw new Error('Employee not found');
@@ -128,8 +150,19 @@ const updateEmployee = async (id, { name, email, phone, employeeId, role, status
 
   if (name) user.name = name.trim();
   if (phone !== undefined) user.phone = phone ? phone.trim() : '';
-  if (role) user.role = role;
-  if (status) user.status = status;
+  if (role) {
+    if (!['admin', 'manager', 'employee'].includes(role)) throw new Error('Invalid role');
+    user.role = role;
+  }
+  if (status) {
+    if (!['active', 'inactive'].includes(status)) throw new Error('Invalid staff status');
+    user.status = status;
+  }
+  if (idDetails !== undefined) user.idDetails = idDetails ? String(idDetails).trim() : '';
+  if (passportNumber !== undefined) user.passportNumber = passportNumber ? String(passportNumber).trim() : '';
+  if (branch !== undefined) user.branch = branch ? String(branch).trim() : '';
+  if (position !== undefined) user.position = position ? String(position).trim() : '';
+  if (garageShop !== undefined) user.garageShop = garageShop ? String(garageShop).trim() : '';
 
   await user.save();
   return user.toJSON();

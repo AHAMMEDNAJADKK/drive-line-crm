@@ -18,6 +18,7 @@ const leadActivitySchema = new mongoose.Schema(
         'Lead Assigned',
         'Lead Reassigned',
         'Follow-up Added',
+        'Follow-up Updated',
         'Lead Converted',
         'Lead Lost',
         'Lead Imported',

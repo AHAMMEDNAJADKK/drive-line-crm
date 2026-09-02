@@ -2,14 +2,13 @@
  * Global centralized error handling middleware
  */
 const errorHandler = (err, req, res, next) => {
-  console.error('[Unhandled Error]', err);
+  console.error('[Unhandled Error]', err.message);
 
   // Mongoose CastError (invalid ObjectId)
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
-      message: `Invalid format for field: ${err.path}`,
-      error: err.message
+      message: `Invalid ${err.path || 'identifier'}`
     });
   }
 
