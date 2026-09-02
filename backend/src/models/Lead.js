@@ -13,7 +13,28 @@ const leadSchema = new mongoose.Schema(
       type: String,
       index: true
     },
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      default: null,
+      index: true
+    },
     customerName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    nationality: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    shopName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    trnNumber: {
       type: String,
       trim: true,
       default: ''
@@ -77,6 +98,15 @@ const leadSchema = new mongoose.Schema(
       min: 1,
       default: 1
     },
+    requirements: [
+      {
+        vehicleName: { type: String, trim: true, default: '' },
+        partName: { type: String, trim: true, default: '' },
+        partNumber: { type: String, trim: true, default: '' },
+        quantity: { type: Number, min: 1, default: 1 },
+        remarks: { type: String, trim: true, default: '' }
+      }
+    ],
     requirementDetails: {
       type: String,
       trim: true,
@@ -177,8 +207,13 @@ leadSchema.index({ companyName: 1 });
 leadSchema.index({ partRequired: 1 });
 leadSchema.index({ partNumber: 1 });
 leadSchema.index({ vehicleModel: 1 });
+leadSchema.index({ 'requirements.vehicleName': 1 });
+leadSchema.index({ 'requirements.partName': 1 });
+leadSchema.index({ 'requirements.partNumber': 1 });
 leadSchema.index({ createdAt: -1 });
 leadSchema.index({ nextFollowUpDate: 1, status: 1 });
+leadSchema.index({ shopName: 1 });
+leadSchema.index({ trnNumber: 1 });
 
 const Lead = mongoose.model('Lead', leadSchema);
 

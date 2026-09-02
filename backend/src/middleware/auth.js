@@ -26,7 +26,14 @@ const authenticate = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'driveline_super_secret_jwt_key_2026_parts_crm_secure');
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server authentication is not configured.'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find user by id
     const user = await User.findById(decoded.id).select('-password');
