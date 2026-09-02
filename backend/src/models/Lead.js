@@ -1,5 +1,52 @@
 const mongoose = require('mongoose');
-const { normalizePhoneNumber, getCanonicalPhoneKey } = require('../utils/phoneUtils');
+
+const {
+  normalizePhoneNumber,
+  getCanonicalPhoneKey,
+} = require('../utils/phoneUtils');
+
+const requirementSchema = new mongoose.Schema(
+  {
+    vehicleName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    vehicleModel: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    partName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    partNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+
+    quantity: {
+      type: Number,
+      min: 1,
+      default: 1,
+    },
+
+    remarks: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+  },
+  {
+    _id: true,
+  }
+);
 
 const leadSchema = new mongoose.Schema(
   {
@@ -7,48 +54,57 @@ const leadSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Mobile number is required'],
       trim: true,
-      index: true
+      index: true,
     },
+
     canonicalPhoneKey: {
       type: String,
-      index: true
+      index: true,
     },
+
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
       default: null,
-      index: true
+      index: true,
     },
+
     customerName: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     nationality: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     shopName: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     trnNumber: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     alternateMobileNumber: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     companyName: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     customerType: {
       type: String,
       enum: [
@@ -59,59 +115,83 @@ const leadSchema = new mongoose.Schema(
         'Service Center',
         'Fleet',
         'Individual',
-        'Other'
+        'Other',
       ],
-      default: 'Other'
+      default: 'Other',
     },
+
     location: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
+    /*
+     * Legacy primary vehicle fields.
+     * These are intentionally retained because existing
+     * CRM features may still use them.
+     */
     vehicleMake: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     vehicleModel: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     vehicleYear: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
+    /*
+     * Legacy primary part fields.
+     */
     partRequired: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     partNumber: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     quantity: {
       type: Number,
       min: 1,
-      default: 1
+      default: 1,
     },
-    requirements: [
-      {
-        vehicleName: { type: String, trim: true, default: '' },
-        partName: { type: String, trim: true, default: '' },
-        partNumber: { type: String, trim: true, default: '' },
-        quantity: { type: Number, min: 1, default: 1 },
-        remarks: { type: String, trim: true, default: '' }
-      }
-    ],
+
+    /*
+     * New professional multi-line requirement structure.
+     *
+     * Each line supports:
+     * vehicle
+     * model
+     * part
+     * part number
+     * quantity
+     * remarks
+     */
+    requirements: {
+      type: [requirementSchema],
+      default: [],
+    },
+
     requirementDetails: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     source: {
       type: String,
       enum: [
@@ -122,10 +202,11 @@ const leadSchema = new mongoose.Schema(
         'Website',
         'Social Media',
         'Existing Customer',
-        'Other'
+        'Other',
       ],
-      default: 'Phone'
+      default: 'Phone',
     },
+
     status: {
       type: String,
       enum: [
@@ -135,86 +216,167 @@ const leadSchema = new mongoose.Schema(
         'Quotation',
         'Interested',
         'Converted',
-        'Lost'
+        'Lost',
       ],
       default: 'New',
-      index: true
+      index: true,
     },
+
     priority: {
       type: String,
-      enum: ['Low', 'Medium', 'High', 'Urgent'],
-      default: 'Medium'
+      enum: [
+        'Low',
+        'Medium',
+        'High',
+        'Urgent',
+      ],
+      default: 'Medium',
     },
+
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
-      index: true
+      index: true,
     },
+
     nextFollowUpDate: {
       type: Date,
       default: null,
-      index: true
+      index: true,
     },
+
     lastContactedAt: {
       type: Date,
-      default: null
+      default: null,
     },
+
     remarks: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     lostReason: {
       type: String,
       trim: true,
-      default: ''
+      default: '',
     },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: true,
     },
+
     convertedAt: {
       type: Date,
-      default: null
-    }
+      default: null,
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
-// Pre-save hook to normalize phone number and set canonical matching key
+/*
+ * Normalize mobile number and maintain the canonical
+ * duplicate-check key.
+ */
 leadSchema.pre('save', function (next) {
-  if (this.isModified('mobileNumber') && this.mobileNumber) {
-    this.mobileNumber = normalizePhoneNumber(this.mobileNumber);
-    this.canonicalPhoneKey = getCanonicalPhoneKey(this.mobileNumber);
+  if (
+    this.isModified('mobileNumber') &&
+    this.mobileNumber
+  ) {
+    this.mobileNumber =
+      normalizePhoneNumber(
+        this.mobileNumber
+      );
+
+    this.canonicalPhoneKey =
+      getCanonicalPhoneKey(
+        this.mobileNumber
+      );
   }
+
+  /*
+   * Keep convertedAt synchronized with status.
+   */
   if (this.isModified('status')) {
-    if (this.status === 'Converted' && !this.convertedAt) {
+    if (
+      this.status === 'Converted' &&
+      !this.convertedAt
+    ) {
       this.convertedAt = new Date();
-    } else if (this.status !== 'Converted') {
+    } else if (
+      this.status !== 'Converted'
+    ) {
       this.convertedAt = null;
     }
   }
+
   next();
 });
 
-// Indexes for fast searching and filtering
-leadSchema.index({ customerName: 1 });
-leadSchema.index({ companyName: 1 });
-leadSchema.index({ partRequired: 1 });
-leadSchema.index({ partNumber: 1 });
-leadSchema.index({ vehicleModel: 1 });
-leadSchema.index({ 'requirements.vehicleName': 1 });
-leadSchema.index({ 'requirements.partName': 1 });
-leadSchema.index({ 'requirements.partNumber': 1 });
-leadSchema.index({ createdAt: -1 });
-leadSchema.index({ nextFollowUpDate: 1, status: 1 });
-leadSchema.index({ shopName: 1 });
-leadSchema.index({ trnNumber: 1 });
+/*
+ * Existing indexes.
+ */
+leadSchema.index({
+  customerName: 1,
+});
 
-const Lead = mongoose.model('Lead', leadSchema);
+leadSchema.index({
+  companyName: 1,
+});
+
+leadSchema.index({
+  partRequired: 1,
+});
+
+leadSchema.index({
+  partNumber: 1,
+});
+
+leadSchema.index({
+  vehicleModel: 1,
+});
+
+leadSchema.index({
+  'requirements.vehicleName': 1,
+});
+
+leadSchema.index({
+  'requirements.vehicleModel': 1,
+});
+
+leadSchema.index({
+  'requirements.partName': 1,
+});
+
+leadSchema.index({
+  'requirements.partNumber': 1,
+});
+
+leadSchema.index({
+  createdAt: -1,
+});
+
+leadSchema.index({
+  nextFollowUpDate: 1,
+  status: 1,
+});
+
+leadSchema.index({
+  shopName: 1,
+});
+
+leadSchema.index({
+  trnNumber: 1,
+});
+
+const Lead = mongoose.model(
+  'Lead',
+  leadSchema
+);
 
 module.exports = Lead;

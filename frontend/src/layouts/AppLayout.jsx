@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, UserSquare2, LogOut,
-  Menu, X, Sun, Moon, ChevronRight, Plus, Car
+  LayoutDashboard,
+  Users,
+  UserSquare2,
+  UserRound,
+  Building2,
+  LogOut,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  Plus,
+  Car
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -12,15 +22,23 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickLeadOpen, setQuickLeadOpen] = useState(false);
 
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('theme');
-      if (saved) return saved;
-      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+
+      if (saved) {
+        return saved;
+      }
+
+      return document.documentElement.classList.contains('dark')
+        ? 'dark'
+        : 'light';
     }
+
     return 'light';
   });
 
@@ -34,7 +52,9 @@ export default function AppLayout() {
     }
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -43,9 +63,35 @@ export default function AppLayout() {
   };
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/leads', icon: UserSquare2, label: 'Leads' },
-    ...(user?.role !== 'employee' ? [{ to: '/employees', icon: Users, label: 'Employees' }] : []),
+    {
+      to: '/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard'
+    },
+    {
+      to: '/leads',
+      icon: UserSquare2,
+      label: 'Leads'
+    },
+    ...(user?.role !== 'employee'
+      ? [
+          {
+            to: '/employees',
+            icon: Users,
+            label: 'Employees'
+          }
+        ]
+      : []),
+    {
+      to: '/customers',
+      icon: UserRound,
+      label: 'Customers'
+    },
+    {
+      to: '/suppliers',
+      icon: Building2,
+      label: 'Suppliers'
+    }
   ];
 
   const navLinkClass = ({ isActive }) =>
@@ -55,6 +101,26 @@ export default function AppLayout() {
         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:text-gray-900 dark:hover:text-gray-100'
     }`;
 
+  const getPageLabel = () => {
+    const customerMatch = location.pathname.startsWith('/customers');
+
+    if (customerMatch) {
+      return 'Customers';
+    }
+
+    const supplierMatch = location.pathname.startsWith('/suppliers');
+
+    if (supplierMatch) {
+      return 'Suppliers';
+    }
+
+    const current = navItems.find((item) =>
+      location.pathname.startsWith(item.to)
+    );
+
+    return current?.label || 'Drive Line';
+  };
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -62,16 +128,25 @@ export default function AppLayout() {
         <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
           <Car className="w-5 h-5 text-white" />
         </div>
+
         <div>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">Drive Line</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Automobile Parts CRM</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">
+            Drive Line
+          </p>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Automobile Parts CRM
+          </p>
         </div>
       </div>
 
       {/* Quick Add Lead */}
       <div className="px-3 py-3">
         <button
-          onClick={() => { setQuickLeadOpen(true); setSidebarOpen(false); }}
+          onClick={() => {
+            setQuickLeadOpen(true);
+            setSidebarOpen(false);
+          }}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -104,11 +179,18 @@ export default function AppLayout() {
           <div className="w-7 h-7 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-xs font-bold flex-shrink-0">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
+
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {user?.name}
+            </p>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+              {user?.role}
+            </p>
           </div>
         </NavLink>
+
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
@@ -136,12 +218,20 @@ export default function AppLayout() {
       )}
 
       {/* Mobile Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/50 transform transition-transform duration-200 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/50 transform transition-transform duration-200 lg:hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="absolute top-3 right-3">
-          <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
+
         <SidebarContent />
       </aside>
 
@@ -157,10 +247,11 @@ export default function AppLayout() {
               >
                 <Menu className="w-5 h-5" />
               </button>
+
               {/* Breadcrumb */}
               <div className="hidden sm:flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                 <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {navItems.find(n => location.pathname.startsWith(n.to))?.label || 'Drive Line'}
+                  {getPageLabel()}
                 </span>
               </div>
             </div>
@@ -179,7 +270,11 @@ export default function AppLayout() {
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus:outline-none transition-colors"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                title={
+                  theme === 'dark'
+                    ? 'Switch to Light Mode'
+                    : 'Switch to Dark Mode'
+                }
               >
                 {theme === 'dark' ? (
                   <Sun className="h-5 w-5" />
@@ -189,7 +284,10 @@ export default function AppLayout() {
               </button>
 
               {/* User avatar */}
-              <NavLink to="/profile" className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <NavLink
+                to="/profile"
+                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
                 <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
@@ -205,7 +303,10 @@ export default function AppLayout() {
       </div>
 
       {/* Quick Lead Modal */}
-      <QuickLeadModal isOpen={quickLeadOpen} onClose={() => setQuickLeadOpen(false)} />
+      <QuickLeadModal
+        isOpen={quickLeadOpen}
+        onClose={() => setQuickLeadOpen(false)}
+      />
     </div>
   );
 }
