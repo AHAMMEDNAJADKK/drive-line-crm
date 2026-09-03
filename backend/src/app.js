@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const helmet = require('helmet');
 
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
@@ -24,11 +25,26 @@ const app = express();
 connectDB();
 
 // ============================================================
-// CORS
+// SECURITY HEADERS
 // ============================================================
 app.use(
+  helmet({
+    crossOriginResourcePolicy: false
+  })
+);
+
+// ============================================================
+// CORS
+// ============================================================
+const allowedOrigin =
+  process.env.CLIENT_URL ||
+  (process.env.NODE_ENV === 'development'
+    ? 'http://localhost:5173'
+    : undefined);
+
+app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigin,
     credentials: true
   })
 );
@@ -71,7 +87,8 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Drive Line CRM API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 

@@ -4,6 +4,7 @@ const fs = require('fs');
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, '../../uploads');
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -13,17 +14,26 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadDir);
   },
+
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uniqueSuffix =
+      Date.now() + '-' + Math.round(Math.random() * 1e9);
+
+    const sanitizedName = path
+      .basename(file.originalname)
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+
     cb(null, `${uniqueSuffix}-${sanitizedName}`);
   }
 });
 
 // File filter for Excel and CSV
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = ['.xlsx', '.xls', '.csv'];
-  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedExtensions = [
+    '.xlsx',
+    '.xls',
+    '.csv'
+  ];
 
   const allowedMimeTypes = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -32,22 +42,35 @@ const fileFilter = (req, file, cb) => {
     'application/csv',
     'text/plain',
     'application/vnd.msexcel',
-    'application/octet-stream' // fallback on some systems
+    'application/octet-stream'
   ];
 
-  if (allowedExtensions.includes(ext) || allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.'), false);
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  const isValidExtension = allowedExtensions.includes(ext);
+  const isValidMimeType = allowedMimeTypes.includes(file.mimetype);
+
+  if (isValidExtension && isValidMimeType) {
+    return cb(null, true);
   }
+
+  return cb(
+    new Error(
+      'Invalid file format. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.'
+    ),
+    false
+  );
 };
 
 const upload = multer({
-  storage: storage,
+  storage,
+
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10 MB
+    files: 1
   },
-  fileFilter: fileFilter
+
+  fileFilter
 });
 
 module.exports = upload;
