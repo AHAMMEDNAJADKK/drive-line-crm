@@ -11,6 +11,8 @@ import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './layouts/ProtectedRoute';
 
 import Login from './pages/Login';
+import RegisterAdmin from './pages/RegisterAdmin';
+
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import LeadDetail from './pages/LeadDetail';
@@ -49,6 +51,18 @@ function AppRoutes() {
             <Navigate to="/dashboard" replace />
           ) : (
             <Login />
+          )
+        }
+      />
+
+      {/* First Admin Registration */}
+      <Route
+        path="/register-admin"
+        element={
+          user ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <RegisterAdmin />
           )
         }
       />

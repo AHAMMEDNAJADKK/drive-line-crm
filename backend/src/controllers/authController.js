@@ -2,19 +2,59 @@ const authService = require('../services/authService');
 
 const login = async (req, res, next) => {
   try {
-    const identifier = req.body.identifier || req.body.email || req.body.employeeId || req.body.username;
+    const identifier =
+      req.body.identifier ||
+      req.body.email ||
+      req.body.employeeId ||
+      req.body.username;
+
     const { password } = req.body;
-    const result = await authService.login({ identifier, password });
-    res.json({ success: true, message: 'Login successful', ...result });
+
+    const result = await authService.login({
+      identifier,
+      password
+    });
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      ...result
+    });
   } catch (err) {
-    res.status(401).json({ success: false, message: err.message || 'Invalid credentials' });
+    res.status(401).json({
+      success: false,
+      message: err.message || 'Invalid credentials'
+    });
+  }
+};
+
+const registerFirstAdmin = async (req, res, next) => {
+  try {
+    const result = await authService.registerFirstAdmin(req.body);
+
+    res.status(201).json({
+      success: true,
+      message: 'First admin registered successfully',
+      data: result
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 400;
+
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Unable to register first admin'
+    });
   }
 };
 
 const getMe = async (req, res, next) => {
   try {
     const user = await authService.getMe(req.user._id);
-    res.json({ success: true, data: user });
+
+    res.json({
+      success: true,
+      data: user
+    });
   } catch (err) {
     next(err);
   }
@@ -22,15 +62,35 @@ const getMe = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
   try {
-    const user = await authService.updateProfile(req.user._id, req.body);
-    res.json({ success: true, message: 'Profile updated successfully', data: user });
+    const user = await authService.updateProfile(
+      req.user._id,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user
+    });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
 const logout = async (req, res) => {
-  res.json({ success: true, message: 'Logged out successfully' });
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
 };
 
-module.exports = { login, getMe, updateProfile, logout };
+module.exports = {
+  login,
+  registerFirstAdmin,
+  getMe,
+  updateProfile,
+  logout
+};
