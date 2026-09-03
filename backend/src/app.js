@@ -36,15 +36,36 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
-const allowedOrigin =
-  process.env.CLIENT_URL ||
-  (process.env.NODE_ENV === 'development'
-    ? 'http://localhost:5173'
-    : undefined);
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://drive-line-crm-z245.vercel.app'
+];
+
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(
+    ...process.env.CLIENT_URL
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  );
+}
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (Postman, server-to-server, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
+    },
     credentials: true
   })
 );
