@@ -1,5 +1,17 @@
 const employeeService = require('../services/employeeService');
 
+const rejectHrAdminAssignment = (req, res) => {
+  if (req.user?.role === 'hr' && req.body?.role === 'admin') {
+    res.status(403).json({
+      success: false,
+      message: 'HR cannot assign the admin role'
+    });
+    return true;
+  }
+
+  return false;
+};
+
 const listEmployees = async (req, res, next) => {
   try {
     const result = await employeeService.listEmployees(
@@ -56,6 +68,8 @@ const getEmployee = async (req, res, next) => {
 };
 
 const createEmployee = async (req, res, next) => {
+  if (rejectHrAdminAssignment(req, res)) return;
+
   try {
     const employee =
       await employeeService.createEmployee(
@@ -107,6 +121,8 @@ const createEmployee = async (req, res, next) => {
 };
 
 const updateEmployee = async (req, res, next) => {
+  if (rejectHrAdminAssignment(req, res)) return;
+
   try {
     const employee =
       await employeeService.updateEmployee(

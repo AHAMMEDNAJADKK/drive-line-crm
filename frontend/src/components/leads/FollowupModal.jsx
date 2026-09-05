@@ -8,9 +8,8 @@ import toast from 'react-hot-toast';
 const STATUSES = [
   'New',
   'Contacted',
-  'Follow Up',
+  'Followup',
   'Quotation',
-  'Interested',
   'Converted',
   'Lost',
 ];

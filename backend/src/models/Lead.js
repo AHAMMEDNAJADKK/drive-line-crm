@@ -212,11 +212,13 @@ const leadSchema = new mongoose.Schema(
       enum: [
         'New',
         'Contacted',
-        'Follow Up',
         'Quotation',
-        'Interested',
+        'Followup',
         'Converted',
         'Lost',
+        // Legacy values retained so existing documents still validate.
+        'Follow Up',
+        'Interested',
       ],
       default: 'New',
       index: true,

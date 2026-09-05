@@ -26,6 +26,10 @@ export default function EmployeeForm({
 
     idDetails: initialData.idDetails || '',
     passportNumber: initialData.passportNumber || '',
+    passportExpireDate: initialData.passportExpireDate
+      ? String(initialData.passportExpireDate).slice(0, 10)
+      : '',
+    vehicleSpecialization: initialData.vehicleSpecialization || '',
     branch: initialData.branch || '',
     position: initialData.position || '',
     garageShop: initialData.garageShop || ''
@@ -94,6 +98,8 @@ export default function EmployeeForm({
       status: form.status,
       idDetails: form.idDetails.trim(),
       passportNumber: form.passportNumber.trim(),
+      passportExpireDate: form.passportExpireDate || null,
+      vehicleSpecialization: form.vehicleSpecialization,
       branch: form.branch.trim(),
       position: form.position.trim(),
       garageShop: form.garageShop.trim()
@@ -107,8 +113,14 @@ export default function EmployeeForm({
     onSubmit(payload);
   };
 
+  const roleLabels = {
+    admin: 'Admin',
+    hr: 'HR',
+    employee: 'Employee'
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-6 p-5 sm:p-6">
 
       {/* Basic Information */}
       <div>
@@ -222,7 +234,7 @@ export default function EmployeeForm({
             >
               {EMPLOYEE_ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                  {roleLabels[role]}
                 </option>
               ))}
             </select>
@@ -322,6 +334,22 @@ export default function EmployeeForm({
               className={FIELD_CLASS}
             />
           </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Passport Expiry Date</label>
+            <input type="date" value={form.passportExpireDate} onChange={set('passportExpireDate')} className={FIELD_CLASS} />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Vehicle Specialization</label>
+            <select value={form.vehicleSpecialization} onChange={set('vehicleSpecialization')} className={FIELD_CLASS}>
+              <option value="">Not specified</option>
+              <option value="German">German</option>
+              <option value="Korean">Korean</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -361,7 +389,7 @@ export default function EmployeeForm({
       )}
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+      <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 dark:border-gray-700/50 sm:flex-row sm:justify-end">
 
         {onCancel && (
           <button
@@ -383,9 +411,11 @@ export default function EmployeeForm({
             <Loader2 className="w-4 h-4 animate-spin" />
           )}
 
-          {isEdit
-            ? 'Save Changes'
-            : 'Create Employee'}
+          {loading
+            ? 'Saving...'
+            : isEdit
+              ? 'Save Employee'
+              : 'Add Employee'}
         </button>
       </div>
     </form>

@@ -7,6 +7,11 @@ const {
 } = require('../utils/phoneUtils');
 
 const { assertObjectId } = require('../utils/ids');
+const {
+  VEHICLE_SPECIALIZATIONS,
+  normalizeVehicleSpecialization
+} = require('../utils/vehicleSpecializations');
+const { isEmployee } = require('../utils/roles');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -73,6 +78,23 @@ const validateStatus = (status) => {
   }
 };
 
+const validateVehicleSpecialization = (value) => {
+  if (value !== undefined && value !== '' && !VEHICLE_SPECIALIZATIONS.includes(value)) {
+    throw new Error('Invalid vehicle specialization');
+  }
+};
+
+const applyEmployeeSupplierScope = (query, user) => {
+  if (!isEmployee(user) || !user.vehicleSpecialization) return;
+
+  query.$or = [
+    { vehicleSpecialization: user.vehicleSpecialization },
+    { vehicleSpecialization: '' },
+    { vehicleSpecialization: null },
+    { vehicleSpecialization: { $exists: false } }
+  ];
+};
+
 // ============================================================
 // DUPLICATE PHONE CHECK
 // ============================================================
@@ -111,7 +133,7 @@ const findSupplierByPhone = async (phone) => {
 // LIST SUPPLIERS
 // ============================================================
 
-const listSuppliers = async (queryParams = {}) => {
+const listSuppliers = async (queryParams = {}, user) => {
   const {
     page: requestedPage = 1,
     limit: requestedLimit = 25,
@@ -130,6 +152,8 @@ const listSuppliers = async (queryParams = {}) => {
   validateSupplierType(supplierType);
 
   const query = {};
+
+  applyEmployeeSupplierScope(query, user);
 
   if (status) {
     query.status = status;
@@ -158,8 +182,16 @@ const listSuppliers = async (queryParams = {}) => {
       { shopWarehouseName: { $regex: s, $options: 'i' } },
       { trnNumber: { $regex: s, $options: 'i' } },
       { email: { $regex: s, $options: 'i' } },
-      { city: { $regex: s, $options: 'i' } }
+      { city: { $regex: s, $options: 'i' } },
+      { vehicleSpecialization: { $regex: s, $options: 'i' } }
     ];
+
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+      delete query.$or;
+    } else {
+      query.$or = searchConditions;
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -196,13 +228,24 @@ const listSuppliers = async (queryParams = {}) => {
 // GET SUPPLIER BY ID
 // ============================================================
 
-const getSupplierById = async (id) => {
+const getSupplierById = async (id, user) => {
   assertObjectId(id, 'supplier id');
 
   const supplier = await Supplier.findById(id).lean();
 
   if (!supplier) {
     throw new Error('Supplier not found');
+  }
+
+  if (
+    isEmployee(user) &&
+    user.vehicleSpecialization &&
+    supplier.vehicleSpecialization &&
+    supplier.vehicleSpecialization !== user.vehicleSpecialization
+  ) {
+    const error = new Error('Unauthorized to view this supplier');
+    error.statusCode = 403;
+    throw error;
   }
 
   return supplier;
@@ -249,6 +292,7 @@ const createSupplier = async (data, user) => {
 
   validateSupplierType(data.supplierType);
   validateStatus(data.status);
+  validateVehicleSpecialization(data.vehicleSpecialization);
 
   // Check duplicate phone
   const existingSupplier = await findSupplierByPhone(phone);
@@ -306,6 +350,9 @@ const createSupplier = async (data, user) => {
 
     status:
       data.status || 'active',
+
+    vehicleSpecialization:
+      normalizeVehicleSpecialization(data.vehicleSpecialization) || '',
 
     notes: normalizeOptionalString(
       data.notes
@@ -417,6 +464,12 @@ const updateSupplier = async (id, data) => {
 
     supplier.status =
       data.status || 'active';
+  }
+
+  if (data.vehicleSpecialization !== undefined) {
+    validateVehicleSpecialization(data.vehicleSpecialization);
+    supplier.vehicleSpecialization =
+      normalizeVehicleSpecialization(data.vehicleSpecialization) || '';
   }
 
   // ----------------------------------------------------------

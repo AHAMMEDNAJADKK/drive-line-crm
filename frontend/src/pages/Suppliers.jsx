@@ -20,6 +20,7 @@ import {
   createSupplier,
   updateSupplier
 } from '../services/supplierApi';
+import { useAuth } from '../context/AuthContext';
 
 const SUPPLIER_TYPES = [
   'Manufacturer',
@@ -43,11 +44,14 @@ const EMPTY_FORM = {
   city: '',
   address: '',
   supplierType: 'Other',
+  vehicleSpecialization: '',
   status: 'active',
   notes: ''
 };
 
 const Suppliers = () => {
+  const { user } = useAuth();
+  const canManageSuppliers = ['admin', 'hr'].includes(user?.role);
   const [suppliers, setSuppliers] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -146,6 +150,7 @@ const Suppliers = () => {
       city: supplier.city || '',
       address: supplier.address || '',
       supplierType: supplier.supplierType || 'Other',
+      vehicleSpecialization: supplier.vehicleSpecialization || '',
       status: supplier.status || 'active',
       notes: supplier.notes || ''
     });
@@ -231,31 +236,31 @@ const Suppliers = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-900 dark:text-gray-100 md:p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Suppliers
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Manage your suppliers and supplier information.
             </p>
           </div>
 
-          <button
+          {canManageSuppliers && <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
           >
             <Plus size={18} />
             Add Supplier
-          </button>
+          </button>}
         </div>
 
         {/* Filters */}
-        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700/50 dark:bg-gray-800">
           <form
             onSubmit={handleSearch}
             className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5"
@@ -263,7 +268,7 @@ const Suppliers = () => {
             <div className="relative lg:col-span-2">
               <Search
                 size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
               />
 
               <input
@@ -271,14 +276,14 @@ const Suppliers = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search suppliers..."
-                className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
               />
             </div>
 
             <select
               value={supplierType}
               onChange={(e) => setSupplierType(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             >
               <option value="">All Types</option>
 
@@ -292,7 +297,7 @@ const Suppliers = () => {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -305,12 +310,12 @@ const Suppliers = () => {
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 placeholder="Country"
-                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500"
+                className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
               />
 
               <button
                 type="submit"
-                className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
               >
                 Search
               </button>
@@ -321,7 +326,7 @@ const Suppliers = () => {
             <button
               type="button"
               onClick={handleResetFilters}
-              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
+              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
               <RefreshCw size={15} />
               Reset filters
@@ -331,44 +336,44 @@ const Suppliers = () => {
 
         {/* Error */}
         {error && !showModal && (
-          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
             {error}
           </div>
         )}
 
         {/* Desktop Table */}
-        <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
+        <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700/50 dark:bg-gray-800 md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
-              <thead className="border-b border-slate-200 bg-slate-50">
+              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700/30">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Supplier
                   </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Contact
                   </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Type
                   </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Location
                   </th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Actions
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                 {loading ? (
                   <tr>
                     <td
                       colSpan="6"
-                      className="px-5 py-12 text-center text-sm text-slate-500"
+                      className="px-5 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
                     >
                       Loading suppliers...
                     </td>
@@ -381,14 +386,14 @@ const Suppliers = () => {
                     >
                       <Building2
                         size={36}
-                        className="mx-auto mb-3 text-slate-300"
+                        className="mx-auto mb-3 text-gray-300 dark:text-gray-600"
                       />
 
-                      <p className="text-sm font-medium text-slate-700">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                         No suppliers found
                       </p>
 
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Add your first supplier to get started.
                       </p>
                     </td>
@@ -397,21 +402,21 @@ const Suppliers = () => {
                   suppliers.map((supplier) => (
                     <tr
                       key={supplier._id}
-                      className="transition hover:bg-slate-50"
+                      className="transition hover:bg-gray-50 dark:hover:bg-gray-700/20"
                     >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                             {getInitials(supplier.name)}
                           </div>
 
                           <div>
-                            <p className="font-semibold text-slate-900">
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">
                               {supplier.name}
                             </p>
 
                             {supplier.companyName && (
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
                                 {supplier.companyName}
                               </p>
                             )}
@@ -421,26 +426,30 @@ const Suppliers = () => {
 
                       <td className="px-5 py-4">
                         <div className="space-y-1">
-                          <p className="text-sm text-slate-700">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
                             {supplier.contactPerson || '-'}
                           </p>
 
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {supplier.phone}
                           </p>
                         </div>
                       </td>
 
-                      <td className="px-5 py-4 text-sm text-slate-700">
+                      <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
                         {supplier.supplierType || 'Other'}
                       </td>
 
+                      <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {supplier.vehicleSpecialization || '—'}
+                      </td>
+
                       <td className="px-5 py-4">
-                        <p className="text-sm text-slate-700">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
                           {supplier.city || '-'}
                         </p>
 
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {supplier.country || ''}
                         </p>
                       </td>
@@ -450,7 +459,7 @@ const Suppliers = () => {
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                             supplier.status === 'active'
                               ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-100 text-slate-600'
+                              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                           }`}
                         >
                           {supplier.status === 'active'
@@ -461,23 +470,23 @@ const Suppliers = () => {
 
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
-                          <button
+                          {canManageSuppliers && <button
                             type="button"
                             onClick={() => openViewModal(supplier)}
                             title="View supplier"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"
+                            className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
                           >
                             <Eye size={17} />
-                          </button>
+                          </button>}
 
-                          <button
+                          {canManageSuppliers && <button
                             type="button"
                             onClick={() => openEditModal(supplier)}
                             title="Edit supplier"
-                            className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"
+                            className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
                           >
                             <Pencil size={17} />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -491,17 +500,17 @@ const Suppliers = () => {
         {/* Mobile Cards */}
         <div className="space-y-3 md:hidden">
           {loading ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 dark:border-gray-700/50 dark:bg-gray-800 dark:text-gray-400">
               Loading suppliers...
             </div>
           ) : suppliers.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-700/50 dark:bg-gray-800">
               <Building2
                 size={36}
-                className="mx-auto mb-3 text-slate-300"
+                className="mx-auto mb-3 text-gray-300 dark:text-gray-600"
               />
 
-              <p className="font-medium text-slate-700">
+              <p className="font-medium text-gray-700 dark:text-gray-200">
                 No suppliers found
               </p>
             </div>
@@ -509,20 +518,20 @@ const Suppliers = () => {
             suppliers.map((supplier) => (
               <div
                 key={supplier._id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700/50 dark:bg-gray-800"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                       {getInitials(supplier.name)}
                     </div>
 
                     <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-slate-900">
+                      <h3 className="truncate font-semibold text-gray-900 dark:text-gray-100">
                         {supplier.name}
                       </h3>
 
-                      <p className="truncate text-xs text-slate-500">
+                      <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                         {supplier.companyName || supplier.supplierType}
                       </p>
                     </div>
@@ -532,7 +541,7 @@ const Suppliers = () => {
                     className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
                       supplier.status === 'active'
                         ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-slate-100 text-slate-600'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {supplier.status === 'active'
@@ -542,20 +551,23 @@ const Suppliers = () => {
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
+                  <div className="text-gray-600 dark:text-gray-300">
+                    Vehicle: <span className="font-medium text-gray-900 dark:text-gray-100">{supplier.vehicleSpecialization || 'Not specified'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                     <Phone size={15} />
                     {supplier.phone}
                   </div>
 
                   {supplier.email && (
-                    <div className="flex items-center gap-2 break-all text-slate-600">
+                    <div className="flex items-center gap-2 break-all text-gray-600 dark:text-gray-300">
                       <Mail size={15} />
                       {supplier.email}
                     </div>
                   )}
 
                   {(supplier.city || supplier.country) && (
-                    <div className="flex items-center gap-2 text-slate-600">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <MapPin size={15} />
                       {[supplier.city, supplier.country]
                         .filter(Boolean)
@@ -564,11 +576,11 @@ const Suppliers = () => {
                   )}
                 </div>
 
-                <div className="mt-4 flex gap-2 border-t border-slate-100 pt-3">
+                <div className="mt-4 flex gap-2 border-t border-gray-100 pt-3 dark:border-gray-700/50">
                   <button
                     type="button"
                     onClick={() => openViewModal(supplier)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     <Eye size={16} />
                     View
@@ -577,7 +589,7 @@ const Suppliers = () => {
                   <button
                     type="button"
                     onClick={() => openEditModal(supplier)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
                   >
                     <Pencil size={16} />
                     Edit
@@ -589,14 +601,14 @@ const Suppliers = () => {
         </div>
 
         {/* Pagination */}
-        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">
+        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-700/50 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Showing{' '}
-            <span className="font-medium text-slate-700">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {suppliers.length}
             </span>{' '}
             of{' '}
-            <span className="font-medium text-slate-700">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {pagination.total || suppliers.length}
             </span>{' '}
             suppliers
@@ -607,12 +619,12 @@ const Suppliers = () => {
               type="button"
               disabled={pagination.page <= 1 || loading}
               onClick={() => goToPage(pagination.page - 1)}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft size={18} />
             </button>
 
-            <span className="min-w-[90px] text-center text-sm text-slate-600">
+            <span className="min-w-[90px] text-center text-sm text-gray-600 dark:text-gray-300">
               Page {pagination.page || 1} of {pagination.pages || 1}
             </span>
 
@@ -623,7 +635,7 @@ const Suppliers = () => {
                 loading
               }
               onClick={() => goToPage(pagination.page + 1)}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronRight size={18} />
             </button>
@@ -633,17 +645,17 @@ const Suppliers = () => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-black/40 p-3 backdrop-blur-[2px] sm:p-5">
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:max-h-[calc(100dvh-2.5rem)]">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700 sm:px-6">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   {editingSupplier
                     ? 'Edit Supplier'
                     : 'Add Supplier'}
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Enter the supplier information below.
                 </p>
               </div>
@@ -652,7 +664,7 @@ const Suppliers = () => {
                 type="button"
                 onClick={closeModal}
                 disabled={saving}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -660,10 +672,10 @@ const Suppliers = () => {
 
             <form
               onSubmit={handleSubmit}
-              className="overflow-y-auto p-5"
+              className="min-h-0 overflow-y-auto p-5 sm:p-6"
             >
               {error && (
-                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
                   {error}
                 </div>
               )}
@@ -753,7 +765,7 @@ const Suppliers = () => {
                 />
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Supplier Type
                   </label>
 
@@ -761,7 +773,7 @@ const Suppliers = () => {
                     name="supplierType"
                     value={form.supplierType}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   >
                     {SUPPLIER_TYPES.map((type) => (
                       <option key={type} value={type}>
@@ -772,7 +784,7 @@ const Suppliers = () => {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Status
                   </label>
 
@@ -780,15 +792,33 @@ const Suppliers = () => {
                     name="status"
                     value={form.status}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
 
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Vehicle Specialization
+                  </label>
+                  <select
+                    name="vehicleSpecialization"
+                    value={form.vehicleSpecialization}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Not specified</option>
+                    <option value="German">German</option>
+                    <option value="Korean">Korean</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
                 <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Address
                   </label>
 
@@ -798,12 +828,12 @@ const Suppliers = () => {
                     onChange={handleChange}
                     rows={3}
                     placeholder="Full supplier address"
-                    className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                    className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Notes
                   </label>
 
@@ -813,17 +843,17 @@ const Suppliers = () => {
                     onChange={handleChange}
                     rows={3}
                     placeholder="Additional notes"
-                    className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+                    className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
                   />
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-gray-200 pt-4 dark:border-gray-700 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -831,7 +861,7 @@ const Suppliers = () => {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving
                     ? 'Saving...'
@@ -847,15 +877,15 @@ const Suppliers = () => {
 
       {/* View Modal */}
       {showViewModal && selectedSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-black/40 p-3 backdrop-blur-[2px] sm:p-5">
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900 sm:max-h-[calc(100dvh-2.5rem)]">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700 sm:px-6">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   Supplier Details
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   View complete supplier information.
                 </p>
               </div>
@@ -863,24 +893,24 @@ const Suppliers = () => {
               <button
                 type="button"
                 onClick={() => setShowViewModal(false)}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-5">
-              <div className="mb-6 flex flex-col gap-4 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-900 text-lg font-bold text-white">
+            <div className="min-h-0 overflow-y-auto p-5 sm:p-6">
+              <div className="mb-6 flex flex-col gap-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-800 sm:flex-row sm:items-center">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
                   {getInitials(selectedSupplier.name)}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                     {selectedSupplier.name}
                   </h3>
 
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {selectedSupplier.companyName ||
                       selectedSupplier.supplierType ||
                       'Supplier'}
@@ -891,7 +921,7 @@ const Suppliers = () => {
                   className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
                     selectedSupplier.status === 'active'
                       ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-slate-200 text-slate-600'
+                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                   }`}
                 >
                   {selectedSupplier.status === 'active'
@@ -975,14 +1005,14 @@ const Suppliers = () => {
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end border-t border-slate-200 pt-4">
+              <div className="mt-6 flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
                 <button
                   type="button"
                   onClick={() => {
                     setShowViewModal(false);
                     openEditModal(selectedSupplier);
                   }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
                 >
                   <Pencil size={16} />
                   Edit Supplier
@@ -1007,7 +1037,7 @@ const FormField = ({
 }) => {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-slate-700">
+      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
         {required && (
           <span className="ml-1 text-red-500">*</span>
@@ -1021,7 +1051,7 @@ const FormField = ({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
       />
     </div>
   );
@@ -1029,13 +1059,13 @@ const FormField = ({
 
 const DetailItem = ({ icon, label, value }) => {
   return (
-    <div className="rounded-lg border border-slate-200 p-3">
-      <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+      <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
         {icon}
         {label}
       </div>
 
-      <p className="break-words text-sm text-slate-800">
+      <p className="break-words text-sm text-gray-800 dark:text-gray-200">
         {value || '-'}
       </p>
     </div>

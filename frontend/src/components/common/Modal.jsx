@@ -9,16 +9,21 @@ export default function Modal({
   size = 'md',
 }) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    if (!isOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -32,7 +37,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[9999] flex min-h-[100dvh] items-center justify-center overflow-y-auto p-3 sm:p-6"
       role="presentation"
     >
       {/* Backdrop */}
@@ -50,7 +55,7 @@ export default function Modal({
         className={`
           relative z-10
           flex w-full ${sizes[size]}
-          max-h-[90vh] max-h-[90dvh]
+          max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]
           flex-col
           overflow-hidden
           rounded-2xl

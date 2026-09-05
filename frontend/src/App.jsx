@@ -23,6 +23,7 @@ import CustomerDetail from './pages/CustomerDetail';
 import Suppliers from './pages/Suppliers';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import HRDashboard from './pages/HRDashboard';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -72,7 +73,7 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route
             path="/dashboard"
-            element={<Dashboard />}
+              element={user?.role === 'hr' ? <Navigate to="/hr" replace /> : <Dashboard />}
           />
 
           <Route
@@ -107,11 +108,17 @@ function AppRoutes() {
             element={<Profile />}
           />
 
-          {/* Admin + Manager only */}
+          <Route
+              element={<ProtectedRoute allowedRoles={['hr']} />}
+          >
+            <Route path="/hr" element={<HRDashboard />} />
+          </Route>
+
+          {/* Admin and HR employee management */}
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={['admin', 'manager']}
+                 allowedRoles={['admin', 'hr']}
               />
             }
           >

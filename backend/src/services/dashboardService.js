@@ -1,19 +1,15 @@
 const Lead = require('../models/Lead');
 const User = require('../models/User');
 const LeadFollowup = require('../models/LeadFollowup');
-const mongoose = require('mongoose');
+const { isEmployee } = require('../utils/roles');
+const { isPassportExpiryDue } = require('../utils/dates');
 
 const getDashboardStats = async (currentUser) => {
-  const isEmployee = currentUser.role === 'employee';
+  const employeeUser = isEmployee(currentUser);
 
-  // Base scope query
-  const baseQuery = isEmployee
-    ? {
-        $or: [
-          { assignedTo: currentUser._id },
-          { createdBy: currentUser._id }
-        ]
-      }
+  // Employees see only leads assigned to them
+  const baseQuery = employeeUser
+    ? { assignedTo: currentUser._id }
     : {};
 
   const now = new Date();
@@ -27,7 +23,6 @@ const getDashboardStats = async (currentUser) => {
     contactedLeads,
     followupLeads,
     quotationLeads,
-    interestedLeads,
     convertedLeads,
     lostLeads,
     todayFollowupsCount,
@@ -36,9 +31,8 @@ const getDashboardStats = async (currentUser) => {
     Lead.countDocuments(baseQuery),
     Lead.countDocuments({ ...baseQuery, status: 'New' }),
     Lead.countDocuments({ ...baseQuery, status: 'Contacted' }),
-    Lead.countDocuments({ ...baseQuery, status: 'Follow Up' }),
+    Lead.countDocuments({ ...baseQuery, status: { $in: ['Followup', 'Follow Up'] } }),
     Lead.countDocuments({ ...baseQuery, status: 'Quotation' }),
-    Lead.countDocuments({ ...baseQuery, status: 'Interested' }),
     Lead.countDocuments({ ...baseQuery, status: 'Converted' }),
     Lead.countDocuments({ ...baseQuery, status: 'Lost' }),
     Lead.countDocuments({
@@ -89,16 +83,15 @@ const getDashboardStats = async (currentUser) => {
   const statusBreakdown = [
     { status: 'New', count: newLeads, color: '#3B82F6' },
     { status: 'Contacted', count: contactedLeads, color: '#6366F1' },
-    { status: 'Follow Up', count: followupLeads, color: '#F59E0B' },
+    { status: 'Followup', count: followupLeads, color: '#F59E0B' },
     { status: 'Quotation', count: quotationLeads, color: '#8B5CF6' },
-    { status: 'Interested', count: interestedLeads, color: '#EC4899' },
     { status: 'Converted', count: convertedLeads, color: '#10B981' },
     { status: 'Lost', count: lostLeads, color: '#EF4444' }
   ];
 
-  // Employee Performance (Admin & Manager only)
+  // Employee Performance (Admin only; employee data is not exposed to employees)
   let employeePerformance = [];
-  if (!isEmployee) {
+  if (!employeeUser) {
     const employees = await User.find({ status: 'active' }).select('_id name employeeId role').lean();
     const empPerformancePromises = employees.map(async (emp) => {
       const [empTotal, empConverted, empLost, empFollowups] = await Promise.all([
@@ -147,7 +140,6 @@ const getDashboardStats = async (currentUser) => {
       contactedLeads,
       followupLeads,
       quotationLeads,
-      interestedLeads,
       convertedLeads,
       lostLeads,
       todayFollowupsCount,
@@ -164,6 +156,54 @@ const getDashboardStats = async (currentUser) => {
   };
 };
 
+const getHrDashboard = async () => {
+  const employees = await User.find({})
+    .select(
+      'name email phone employeeId role status vehicleSpecialization passportNumber passportExpireDate lastLogin createdAt'
+    )
+    .sort({ name: 1 })
+    .lean();
+
+  const now = new Date();
+  const activeEmployees = employees.filter((emp) => emp.status === 'active');
+  const inactiveEmployees = employees.filter((emp) => emp.status === 'inactive');
+
+  const passportWatch = employees
+    .filter((emp) => emp.status === 'active' && emp.passportExpireDate)
+    .map((emp) => {
+      const due = isPassportExpiryDue(emp.passportExpireDate, now);
+      const days = require('../utils/dates').daysUntilUtc(
+        emp.passportExpireDate,
+        now
+      );
+      return {
+        _id: emp._id,
+        name: emp.name,
+        employeeId: emp.employeeId,
+        passportExpireDate: emp.passportExpireDate,
+        daysUntilExpiry: days,
+        expired: days !== null && days < 0,
+        dueSoon: due
+      };
+    })
+    .filter((item) => item.dueSoon)
+    .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+
+  return {
+    totals: {
+      totalEmployees: employees.length,
+      activeEmployees: activeEmployees.length,
+      inactiveEmployees: inactiveEmployees.length,
+      passportAlerts: passportWatch.length
+    },
+    employees,
+    activeEmployees,
+    inactiveEmployees,
+    passportAlerts: passportWatch
+  };
+};
+
 module.exports = {
-  getDashboardStats
+  getDashboardStats,
+  getHrDashboard
 };

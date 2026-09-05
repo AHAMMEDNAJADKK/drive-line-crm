@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Loader2,
   Plus,
@@ -179,6 +180,7 @@ function SearchableSelect({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState(null);
 
   const [newOption, setNewOption] = useState('');
   const [addError, setAddError] = useState('');
@@ -251,6 +253,44 @@ function SearchableSelect({
     });
 
     return () => cancelAnimationFrame(frame);
+  }, [open, showAddForm]);
+
+  useEffect(() => {
+    if (!open || showAddForm) return undefined;
+
+    const updateDropdownPosition = () => {
+      const anchor = containerRef.current?.getBoundingClientRect();
+
+      if (!anchor) return;
+
+      const gap = 6;
+      const viewportPadding = 12;
+      const availableBelow = window.innerHeight - anchor.bottom - viewportPadding;
+      const availableAbove = anchor.top - viewportPadding;
+      const openAbove = availableBelow < 240 && availableAbove > availableBelow;
+      const availableHeight = Math.max(
+        120,
+        Math.min(360, openAbove ? availableAbove : availableBelow)
+      );
+
+      setDropdownPosition({
+        left: anchor.left,
+        top: openAbove
+          ? Math.max(viewportPadding, anchor.top - availableHeight - gap)
+          : anchor.bottom + gap,
+        width: anchor.width,
+        maxHeight: availableHeight,
+      });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener('resize', updateDropdownPosition);
+    window.addEventListener('scroll', updateDropdownPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+    };
   }, [open, showAddForm]);
 
   /* =======================================================
@@ -581,9 +621,15 @@ function SearchableSelect({
             NORMAL DROPDOWN
         ================================================= */}
 
-        {open && !showAddForm && (
+        {open && !showAddForm && dropdownPosition && createPortal(
           <div
-            className="absolute left-0 right-0 z-[100] mt-1.5 overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl"
+            className="fixed z-[10000] flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+            style={{
+              left: dropdownPosition.left,
+              top: dropdownPosition.top,
+              width: dropdownPosition.width,
+              height: dropdownPosition.maxHeight,
+            }}
             onMouseDown={(event) =>
               event.stopPropagation()
             }
@@ -618,7 +664,7 @@ function SearchableSelect({
                 OPTIONS
             ============================================= */}
 
-            <div className="max-h-56 overflow-y-auto py-1">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map(
                   (option, optionIndex) => {
@@ -634,7 +680,6 @@ function SearchableSelect({
                         key={option}
                         type="button"
                         onMouseDown={(event) => {
-                          event.preventDefault();
                           event.stopPropagation();
                         }}
                         onClick={() =>
@@ -698,7 +743,8 @@ function SearchableSelect({
                 </button>
               </div>
             )}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
@@ -1323,7 +1369,7 @@ export default function LeadForm({
         }
 
         if (
-          item.quantity &&
+          !isNew && item.quantity &&
           Number(item.quantity) < 1
         ) {
           requirementErrors[
@@ -1387,31 +1433,21 @@ export default function LeadForm({
     const payload = {
       ...form,
 
-      requirements:
-        requirements.map((item) => ({
-          vehicleName:
-            item.vehicleName?.trim() ||
-            '',
+      requirements: requirements.map((item) => {
+        const current = {
+          vehicleName: item.vehicleName?.trim() || '',
+          vehicleModel: item.vehicleModel?.trim() || '',
+          partName: item.partName?.trim() || ''
+        };
 
-          vehicleModel:
-            item.vehicleModel?.trim() ||
-            '',
+        if (!isNew) {
+          current.partNumber = item.partNumber?.trim() || '';
+          current.quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+          current.remarks = item.remarks?.trim() || '';
+        }
 
-          partName:
-            item.partName?.trim() || '',
-
-          partNumber:
-            item.partNumber?.trim() ||
-            '',
-
-          quantity:
-            Number(item.quantity) > 0
-              ? Number(item.quantity)
-              : 1,
-
-          remarks:
-            item.remarks?.trim() || '',
-        })),
+        return current;
+      }),
 
       vehicleMake:
         first.vehicleName?.trim() ||
@@ -1428,18 +1464,11 @@ export default function LeadForm({
         form.partRequired ||
         '',
 
-      partNumber:
-        first.partNumber?.trim() ||
-        form.partNumber ||
-        '',
-
-      quantity:
-        Number(first.quantity) > 0
-          ? Number(first.quantity)
-          : 1,
-
-      requirementDetails:
-        form.requirementDetails || '',
+      ...(isNew ? {} : {
+        partNumber: first.partNumber?.trim() || form.partNumber || '',
+        quantity: Number(first.quantity) > 0 ? Number(first.quantity) : 1,
+        requirementDetails: form.requirementDetails || ''
+      }),
     };
 
     onSubmit(payload);
@@ -1515,7 +1544,7 @@ export default function LeadForm({
               required
             />
 
-            <Field
+            {!isNew && <Field
               label="Alternate Mobile"
               name="alternateMobileNumber"
               value={
@@ -1528,7 +1557,7 @@ export default function LeadForm({
                 errors.alternateMobileNumber
               }
               placeholder="+91 87654 32109"
-            />
+            />}
 
             <Field
               label="Company / Workshop"
@@ -1619,13 +1648,13 @@ export default function LeadForm({
                 Parts
               </div>
 
-              <div className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              {!isNew && <div className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                 Part Number
-              </div>
+              </div>}
 
-              <div className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              {!isNew && <div className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                 Quantity
-              </div>
+              </div>}
 
               <div className="px-2 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500 text-center whitespace-nowrap">
                 Remove
@@ -1715,7 +1744,7 @@ export default function LeadForm({
                     />
                   </div>
 
-                  <div className="px-2 py-3 min-w-0">
+                  {!isNew && <div className="px-2 py-3 min-w-0">
                     <input
                       type="text"
                       value={
@@ -1732,9 +1761,9 @@ export default function LeadForm({
                       placeholder="Optional"
                       className={FIELD_CLASS}
                     />
-                  </div>
+                  </div>}
 
-                  <div className="px-2 py-3">
+                  {!isNew && <div className="px-2 py-3">
                     <input
                       type="number"
                       min={1}
@@ -1755,7 +1784,7 @@ export default function LeadForm({
                       }
                       className={`${FIELD_CLASS} text-center`}
                     />
-                  </div>
+                  </div>}
 
                   <div className="px-2 py-3 min-w-[78px] flex items-center justify-center border-l border-gray-100 dark:border-gray-800 min-h-[70px]">
                     <button
@@ -1922,7 +1951,7 @@ export default function LeadForm({
                       />
                     </div>
 
-                    <div>
+                    {!isNew && <div>
                       <label
                         className={
                           LABEL_CLASS
@@ -1949,9 +1978,9 @@ export default function LeadForm({
                           FIELD_CLASS
                         }
                       />
-                    </div>
+                    </div>}
 
-                    <div>
+                    {!isNew && <div>
                       <label
                         className={
                           LABEL_CLASS
@@ -1982,9 +2011,9 @@ export default function LeadForm({
                           FIELD_CLASS
                         }
                       />
-                    </div>
+                    </div>}
 
-                    <div className="sm:col-span-2">
+                    <div className={`sm:col-span-2 ${isNew ? 'hidden' : ''}`}>
                       <label
                         className={
                           LABEL_CLASS
@@ -2021,7 +2050,7 @@ export default function LeadForm({
               SUMMARY
           ================================================= */}
 
-          <div className="mt-4 flex items-center justify-end">
+          {!isNew && <div className="mt-4 flex items-center justify-end">
             <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
               <span>
                 Lines:{' '}
@@ -2037,13 +2066,13 @@ export default function LeadForm({
                 </strong>
               </span>
             </div>
-          </div>
+          </div>}
 
           {/* =================================================
               OVERALL NOTES
           ================================================= */}
 
-          <div className="mt-4">
+          <div className={`mt-4 ${isNew ? 'hidden' : ''}`}>
             <label
               className={LABEL_CLASS}
             >
@@ -2066,11 +2095,12 @@ export default function LeadForm({
         </div>
       </section>
 
-      {/* =================================================
+        {!isNew && <>
+        {/* =================================================
           VEHICLE INFORMATION
-      ================================================= */}
+        ================================================= */}
 
-      <section className={SECTION_CLASS}>
+        <section className={SECTION_CLASS}>
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -2138,6 +2168,7 @@ export default function LeadForm({
           </div>
         </div>
       </section>
+      </>}
 
       {/* =================================================
           SALES INFORMATION
@@ -2217,15 +2248,14 @@ export default function LeadForm({
                       key={employee._id}
                       value={employee._id}
                     >
-                      {employee.name} (
-                      {employee.employeeId})
+                      {employee.name} - {employee.employeeId} - {employee.vehicleSpecialization || 'Other'}
                     </option>
                   )
                 )}
               </select>
             </div>
 
-            <div>
+            {!isNew && <div>
               <label
                 className={LABEL_CLASS}
               >
@@ -2243,9 +2273,9 @@ export default function LeadForm({
                 )}
                 className={FIELD_CLASS}
               />
-            </div>
+            </div>}
 
-            <div>
+            {!isNew && <div>
               <label
                 className={LABEL_CLASS}
               >
@@ -2263,9 +2293,9 @@ export default function LeadForm({
                         : 'Lead'
                     }`}
               </div>
-            </div>
+            </div>}
 
-            <div className="sm:col-span-2">
+            <div className={`sm:col-span-2 ${isNew ? 'hidden' : ''}`}>
               <label
                 className={LABEL_CLASS}
               >
@@ -2334,14 +2364,13 @@ export default function LeadForm({
           {requirements.length !== 1
             ? 's'
             : ''}{' '}
-          ·{' '}
-          <span className="font-medium">
-            {totalQuantity}
-          </span>{' '}
-          total item
-          {totalQuantity !== 1
-            ? 's'
-            : ''}
+          {!isNew && <> ·{' '}
+            <span className="font-medium">
+              {totalQuantity}
+            </span>{' '}
+            total item
+            {totalQuantity !== 1 ? 's' : ''}
+          </>}
         </div>
 
         <div className="flex items-center justify-end gap-3">

@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function ConfirmDialog({
   isOpen,
@@ -12,6 +13,20 @@ export default function ConfirmDialog({
   type = 'danger',
   loading = false,
 }) {
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const label = confirmLabel || confirmText || 'Confirm';
@@ -23,9 +38,9 @@ export default function ConfirmDialog({
   const btnClass = confirmClass || defaultButtonClass;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex min-h-[100dvh] items-center justify-center overflow-y-auto p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700/50 p-6 w-full max-w-sm">
+      <div role="dialog" aria-modal="true" className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl dark:border-gray-700/50 dark:bg-gray-800 sm:p-6">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />

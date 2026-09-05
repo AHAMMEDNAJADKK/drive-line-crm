@@ -26,18 +26,18 @@ router.get('/', ctrl.listSuppliers);
 router.get('/:id', ctrl.getSupplier);
 
 // Create supplier
-// Admin and Manager only
+// Admin and HR only
 router.post(
   '/',
-  authorize('admin', 'manager'),
+  authorize('admin', 'hr'),
   ctrl.createSupplier
 );
 
 // Update supplier
-// Admin and Manager only
+// Admin and HR only
 router.patch(
   '/:id',
-  authorize('admin', 'manager'),
+  authorize('admin', 'hr'),
   ctrl.updateSupplier
 );
 

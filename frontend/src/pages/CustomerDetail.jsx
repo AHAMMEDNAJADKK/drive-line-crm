@@ -615,7 +615,7 @@ export default function CustomerDetail() {
 
       {/* Edit Modal */}
       {editOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-black/40 p-3 backdrop-blur-[2px] sm:p-5">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => {
@@ -625,7 +625,7 @@ export default function CustomerDetail() {
             }}
           />
 
-          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700/50">
+          <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl dark:border-gray-700/50 dark:bg-gray-800 sm:max-h-[calc(100dvh-2.5rem)]">
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700/50">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -652,8 +652,8 @@ export default function CustomerDetail() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="p-5 space-y-5">
+            <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto">
+              <div className="space-y-5 p-5 sm:p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <EditField
                     label="Customer Name"

@@ -17,13 +17,13 @@ const seed = async () => {
       password: 'Admin@123'
     },
     {
-      name: 'Rajesh Manager',
-      email: 'manager@driveline.com',
+      name: 'HR User',
+      email: 'hr@driveline.com',
       phone: '9000000002',
       employeeId: 'DL002',
-      role: 'manager',
+      role: 'hr',
       status: 'active',
-      password: 'Manager@123'
+      password: 'Hr@123456'
     },
     {
       name: 'Rahul Sales',
@@ -52,7 +52,7 @@ const seed = async () => {
   console.log('\n✅ Seeding complete!\n');
   console.log('Login credentials:');
   console.log('  Admin:    admin@driveline.com / Admin@123');
-  console.log('  Manager:  manager@driveline.com / Manager@123');
+  console.log('  HR:       hr@driveline.com / Hr@123456');
   console.log('  Employee: rahul@driveline.com / Employee@123\n');
 
   await mongoose.connection.close();

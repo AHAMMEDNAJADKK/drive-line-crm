@@ -88,6 +88,13 @@ const supplierSchema = new mongoose.Schema(
       default: 'Other'
     },
 
+    vehicleSpecialization: {
+      type: String,
+      enum: ['', 'German', 'Korean', 'Japanese', 'Other'],
+      default: '',
+      index: true
+    },
+
     status: {
       type: String,
       enum: ['active', 'inactive'],

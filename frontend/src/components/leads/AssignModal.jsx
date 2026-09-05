@@ -116,7 +116,7 @@ export default function AssignModal({ isOpen, onClose, lead, onAssigned }) {
 
                 {employees.map((emp) => (
                   <option key={emp._id} value={emp._id}>
-                    {emp.name} ({emp.employeeId}) - {emp.role}
+                    {emp.name} - {emp.employeeId} - {emp.vehicleSpecialization || 'Other'}
                   </option>
                 ))}
               </select>

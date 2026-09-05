@@ -56,6 +56,7 @@ const updateStatus = async (req, res) => {
     res.json({ success: true, message: 'Lead status updated', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -89,6 +90,7 @@ const getActivity = async (req, res) => {
     res.json({ success: true, data: activities });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };
