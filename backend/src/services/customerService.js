@@ -21,7 +21,7 @@ const employeeRelatedCustomerFilter = async (user) => {
 
 const canAccessCustomer = async (customer, user) => {
   if (!user) return false;
-  if (user.role === 'admin' || user.role === 'manager') return true;
+  if (user.role === 'admin') return true;
   if (customer.createdBy && customer.createdBy.toString() === user._id.toString()) return true;
   const related = await Lead.exists({
     customerId: customer._id,

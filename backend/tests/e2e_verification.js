@@ -1,6 +1,6 @@
 const http = require('http');
 
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = process.env.API_BASE_URL || 'http://localhost:5000/api';
 
 async function request(path, options = {}) {
   const url = new URL(`${BASE_URL}${path}`);
@@ -56,12 +56,12 @@ async function runTests() {
     assert(adminLogin.status === 200 && adminLogin.data.token, 'Admin login succeeds and returns JWT');
     const adminToken = adminLogin.data.token;
 
-    const managerLogin = await request('/auth/login', {
+    const hrLogin = await request('/auth/login', {
       method: 'POST',
-      body: { identifier: 'manager@driveline.com', password: 'Manager@123' },
+      body: { identifier: 'hr@driveline.com', password: 'Hr@123456' },
     });
-    assert(managerLogin.status === 200 && managerLogin.data.token, 'Manager login succeeds');
-    const managerToken = managerLogin.data.token;
+    assert(hrLogin.status === 200 && hrLogin.data.token, 'HR login succeeds');
+    const hrToken = hrLogin.data.token;
 
     const employeeLogin = await request('/auth/login', {
       method: 'POST',
@@ -147,13 +147,13 @@ async function runTests() {
     });
     assert(updateLead.status === 200 && updateLead.data.data.vehicleMake === 'Toyota', 'Lead updated with vehicle and parts specs');
 
-    // Lead assignment by Manager
+    // Lead assignment by Admin
     const assignLead = await request(`/leads/${leadId}/assign`, {
       method: 'PATCH',
-      token: managerToken,
+      token: adminToken,
       body: { assignedTo: employeeUser._id },
     });
-    assert(assignLead.status === 200, 'Manager can assign lead to Employee');
+    assert(assignLead.status === 200, 'Admin can assign lead to Employee');
 
     // Add Follow-up
     const followup = await request(`/leads/${leadId}/followups`, {
@@ -200,6 +200,51 @@ async function runTests() {
     });
     assert(newEmpRes.status === 201 && newEmpRes.data.data._id, 'Admin can create new Employee account');
     const newEmpId = newEmpRes.data.data._id;
+
+    const hrEmployeeRes = await request('/employees', {
+      method: 'POST',
+      token: hrToken,
+      body: {
+        name: 'HR Created Employee',
+        email: `hr_created_${Date.now()}@driveline.com`,
+        employeeId: `DL${Math.floor(1000 + Math.random() * 9000)}`,
+        phone: '9876543211',
+        password: 'Password@123',
+        role: 'employee',
+        status: 'active',
+        vehicleSpecialization: 'German',
+        passportExpireDate: new Date(Date.now() + 30 * 86400000).toISOString()
+      },
+    });
+    assert(hrEmployeeRes.status === 201 && hrEmployeeRes.data.data.role === 'employee', 'HR can create an Employee account');
+
+    const hrAdminRes = await request('/employees', {
+      method: 'POST',
+      token: hrToken,
+      body: {
+        name: 'Unauthorized Admin',
+        email: `unauthorized_admin_${Date.now()}@driveline.com`,
+        employeeId: `DL${Math.floor(1000 + Math.random() * 9000)}`,
+        password: 'Password@123',
+        role: 'admin',
+        status: 'active'
+      },
+    });
+    assert(hrAdminRes.status === 403, 'HR cannot create an Admin account');
+
+    const managerRes = await request('/employees', {
+      method: 'POST',
+      token: adminToken,
+      body: {
+        name: 'Rejected Manager',
+        email: `rejected_manager_${Date.now()}@driveline.com`,
+        employeeId: `DL${Math.floor(1000 + Math.random() * 9000)}`,
+        password: 'Password@123',
+        role: 'manager',
+        status: 'active'
+      },
+    });
+    assert(managerRes.status === 400, 'Manager role is rejected');
 
     const toggleStatus = await request(`/employees/${newEmpId}/status`, {
       method: 'PATCH',

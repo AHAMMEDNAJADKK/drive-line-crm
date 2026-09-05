@@ -120,7 +120,7 @@ export default function Employees() {
     }
   };
 
-  const isAdmin = user?.role === 'admin';
+  const canManageEmployees = ['admin', 'hr'].includes(user?.role);
 
   return (
     <div className="space-y-4">
@@ -134,7 +134,7 @@ export default function Employees() {
             </p>
           )}
         </div>
-        {isAdmin && (
+        {canManageEmployees && (
           <button
             onClick={() => {
               setEditingEmployee(null);
@@ -169,7 +169,7 @@ export default function Employees() {
         >
           <option value="">All Roles</option>
           <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
+          <option value="hr">HR</option>
           <option value="employee">Employee</option>
         </select>
         <select
@@ -196,7 +196,7 @@ export default function Employees() {
           title="No employees found"
           description="Try clearing filters or add a new team member."
           action={
-            isAdmin
+            canManageEmployees
               ? {
                   label: 'Add Employee',
                   onClick: () => {
@@ -243,7 +243,7 @@ export default function Employees() {
           setEditingEmployee(null);
         }}
         title={editingEmployee ? 'Edit Employee' : 'Add New Employee'}
-        size="md"
+        size="lg"
       >
         <EmployeeForm
           initialData={editingEmployee || {}}

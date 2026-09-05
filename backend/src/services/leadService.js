@@ -7,6 +7,13 @@ const {
   getCanonicalPhoneKey,
   isValidPhoneNumber
 } = require('../utils/phoneUtils');
+const { isEmployee } = require('../utils/roles');
+const { assertEmployeeLeadAccess } = require('../utils/leadAccess');
+const {
+  normalizeLeadStatus,
+  isWritableLeadStatus,
+  statusFilterQuery
+} = require('../utils/leadStatus');
 
 /**
  * Normalize requirements array
@@ -72,7 +79,7 @@ const checkDuplicate = async (mobileNumber) => {
       { mobileNumber: { $regex: canonicalKey + '$' } }
     ]
   })
-    .populate('assignedTo', 'name email employeeId phone')
+    .populate('assignedTo', 'name email employeeId phone vehicleSpecialization')
     .populate('createdBy', 'name employeeId')
     .lean();
 
@@ -85,29 +92,15 @@ const checkDuplicate = async (mobileNumber) => {
 const buildLeadFilterQuery = (user, filters = {}) => {
   const query = {};
 
-  // 1. Role-based scoping
-  if (user.role === 'employee') {
-    query.$or = [
-      { assignedTo: user._id },
-      { createdBy: user._id }
-    ];
-  } else if (user.role === 'manager') {
-    if (filters.assignedTo) {
-      query.assignedTo = filters.assignedTo;
-    }
-  }
-
-  // 2. Direct filters
-  if (filters.assignedTo && user.role !== 'employee') {
+  // 1. Role-based scoping — employees see only leads assigned to them
+  if (isEmployee(user)) {
+    query.assignedTo = user._id;
+  } else if (filters.assignedTo) {
     query.assignedTo = filters.assignedTo;
   }
 
   if (filters.status) {
-    if (Array.isArray(filters.status)) {
-      query.status = { $in: filters.status };
-    } else {
-      query.status = filters.status;
-    }
+    query.status = statusFilterQuery(filters.status);
   }
 
   if (filters.priority) {
@@ -359,11 +352,23 @@ const createLead = async (leadData, currentUser) => {
     }
   }
 
-  // Default assignment
+  // Default assignment — employees may only assign to themselves
   let assignee = assignedTo;
 
-  if (!assignee) {
+  if (isEmployee(currentUser)) {
     assignee = currentUser._id;
+  } else if (!assignee) {
+    assignee = currentUser._id;
+  }
+
+  let initialStatus = status || 'New';
+  if (initialStatus) {
+    if (!isWritableLeadStatus(initialStatus)) {
+      throw new Error(
+        'Invalid lead status. Allowed values: New, Contacted, Quotation, Followup, Converted, Lost'
+      );
+    }
+    initialStatus = normalizeLeadStatus(initialStatus);
   }
 
   const normalized =
@@ -472,7 +477,7 @@ const createLead = async (leadData, currentUser) => {
       source || 'Phone',
 
     status:
-      status || 'New',
+      initialStatus || 'New',
 
     priority:
       priority || 'Medium',
@@ -549,7 +554,7 @@ const createLead = async (leadData, currentUser) => {
     await Lead.findById(newLead._id)
       .populate(
         'assignedTo',
-        'name email employeeId phone'
+        'name email employeeId phone vehicleSpecialization'
       )
       .populate(
         'createdBy',
@@ -596,7 +601,7 @@ const listLeads = async (
       Lead.find(query)
         .populate(
           'assignedTo',
-          'name email employeeId phone'
+          'name email employeeId phone vehicleSpecialization'
         )
         .populate(
           'createdBy',
@@ -650,7 +655,7 @@ const getLeadById = async (
     await Lead.findById(id)
       .populate(
         'assignedTo',
-        'name email employeeId phone'
+        'name email employeeId phone vehicleSpecialization'
       )
       .populate(
         'createdBy',
@@ -664,23 +669,7 @@ const getLeadById = async (
     );
   }
 
-  if (currentUser.role === 'employee') {
-    const isAssigned =
-      lead.assignedTo &&
-      lead.assignedTo._id.toString() ===
-        currentUser._id.toString();
-
-    const isCreator =
-      lead.createdBy &&
-      lead.createdBy._id.toString() ===
-        currentUser._id.toString();
-
-    if (!isAssigned && !isCreator) {
-      throw new Error(
-        'Unauthorized to view this lead'
-      );
-    }
-  }
+  assertEmployeeLeadAccess(lead, currentUser, 'view');
 
   return lead;
 };
@@ -702,23 +691,7 @@ const updateLead = async (
     );
   }
 
-  if (currentUser.role === 'employee') {
-    const isAssigned =
-      lead.assignedTo &&
-      lead.assignedTo.toString() ===
-        currentUser._id.toString();
-
-    const isCreator =
-      lead.createdBy &&
-      lead.createdBy.toString() ===
-        currentUser._id.toString();
-
-    if (!isAssigned && !isCreator) {
-      throw new Error(
-        'Unauthorized to modify this lead'
-      );
-    }
-  }
+  assertEmployeeLeadAccess(lead, currentUser, 'modify');
 
   const previousStatus =
     lead.status;
@@ -940,8 +913,14 @@ const updateLead = async (
     updateData.status !==
       lead.status
   ) {
+    if (!isWritableLeadStatus(updateData.status)) {
+      throw new Error(
+        'Invalid lead status. Allowed values: New, Contacted, Quotation, Followup, Converted, Lost'
+      );
+    }
+
     lead.status =
-      updateData.status;
+      normalizeLeadStatus(updateData.status);
 
     if (
       updateData.status ===
@@ -959,8 +938,7 @@ const updateLead = async (
   if (
     updateData.assignedTo !==
       undefined &&
-    currentUser.role !==
-      'employee'
+    !isEmployee(currentUser)
   ) {
     lead.assignedTo =
       updateData.assignedTo ||
@@ -1077,7 +1055,7 @@ const updateLead = async (
     )
       .populate(
         'assignedTo',
-        'name email employeeId phone'
+        'name email employeeId phone vehicleSpecialization'
       )
       .populate(
         'createdBy',
@@ -1105,29 +1083,15 @@ const updateLeadStatus = async (
     );
   }
 
-  if (
-    currentUser.role ===
-    'employee'
-  ) {
-    const isAssigned =
-      lead.assignedTo &&
-      lead.assignedTo.toString() ===
-        currentUser._id.toString();
+  assertEmployeeLeadAccess(lead, currentUser, 'modify');
 
-    const isCreator =
-      lead.createdBy &&
-      lead.createdBy.toString() ===
-        currentUser._id.toString();
-
-    if (
-      !isAssigned &&
-      !isCreator
-    ) {
-      throw new Error(
-        'Unauthorized to modify this lead'
-      );
-    }
+  if (!isWritableLeadStatus(status)) {
+    throw new Error(
+      'Invalid lead status. Allowed values: New, Contacted, Quotation, Followup, Converted, Lost'
+    );
   }
+
+  status = normalizeLeadStatus(status);
 
   const previousStatus =
     lead.status;
@@ -1197,7 +1161,7 @@ const updateLeadStatus = async (
     )
       .populate(
         'assignedTo',
-        'name email employeeId phone'
+        'name email employeeId phone vehicleSpecialization'
       )
       .populate(
         'createdBy',
@@ -1216,10 +1180,7 @@ const assignLead = async (
   assignedToUserId,
   currentUser
 ) => {
-  if (
-    currentUser.role ===
-    'employee'
-  ) {
+  if (isEmployee(currentUser)) {
     throw new Error(
       'Employees are not authorized to reassign leads'
     );
@@ -1283,7 +1244,7 @@ const assignLead = async (
     )
       .populate(
         'assignedTo',
-        'name email employeeId phone'
+        'name email employeeId phone vehicleSpecialization'
       )
       .populate(
         'createdBy',

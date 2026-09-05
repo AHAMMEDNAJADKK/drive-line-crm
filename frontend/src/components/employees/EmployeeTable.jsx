@@ -11,7 +11,7 @@ export default function EmployeeTable({
   onToggleStatus,
   onResetPassword,
 }) {
-  const isAdmin = currentUser?.role === 'admin';
+  const canManageEmployees = ['admin', 'hr'].includes(currentUser?.role);
 
   return (
     <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
@@ -23,6 +23,8 @@ export default function EmployeeTable({
               <th className="px-6 py-4">Employee</th>
               <th className="px-6 py-4">Employee ID</th>
               <th className="px-6 py-4">Contact</th>
+              <th className="px-6 py-4">Vehicle</th>
+              <th className="px-6 py-4">Passport Expiry</th>
               <th className="px-6 py-4">Role</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Leads Assigned</th>
@@ -53,6 +55,12 @@ export default function EmployeeTable({
                 <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
                   {emp.phone || '—'}
                 </td>
+                <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
+                  {emp.vehicleSpecialization || '—'}
+                </td>
+                <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
+                  {emp.passportExpireDate ? new Date(emp.passportExpireDate).toLocaleDateString('en-GB') : '—'}
+                </td>
                 <td className="px-6 py-4">
                   <RoleBadge role={emp.role} />
                 </td>
@@ -74,7 +82,7 @@ export default function EmployeeTable({
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    {isAdmin && (
+                    {canManageEmployees && (
                       <>
                         <button
                           onClick={() => onEdit(emp)}
@@ -147,6 +155,12 @@ export default function EmployeeTable({
                 Phone: <span className="text-gray-800 dark:text-gray-200 font-medium">{emp.phone || '—'}</span>
               </div>
               <div className="text-gray-500">
+                Vehicle: <span className="text-gray-800 dark:text-gray-200 font-medium">{emp.vehicleSpecialization || '—'}</span>
+              </div>
+              <div className="text-gray-500">
+                Passport: <span className="text-gray-800 dark:text-gray-200 font-medium">{emp.passportExpireDate ? new Date(emp.passportExpireDate).toLocaleDateString('en-GB') : '—'}</span>
+              </div>
+              <div className="text-gray-500">
                 Assigned Leads:{' '}
                 <span className="text-indigo-600 dark:text-indigo-400 font-bold">
                   {emp.leadsAssigned ?? emp.assignedLeadsCount ?? 0}
@@ -164,7 +178,7 @@ export default function EmployeeTable({
               >
                 View
               </button>
-              {isAdmin && (
+              {canManageEmployees && (
                 <>
                   <button
                     onClick={() => onEdit(emp)}

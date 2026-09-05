@@ -6,7 +6,7 @@ const supplierService = require('../services/supplierService');
 
 const listSuppliers = async (req, res, next) => {
   try {
-    const result = await supplierService.listSuppliers(req.query);
+    const result = await supplierService.listSuppliers(req.query, req.user);
 
     return res.status(200).json({
       success: true,
@@ -24,7 +24,8 @@ const listSuppliers = async (req, res, next) => {
 const getSupplier = async (req, res) => {
   try {
     const supplier = await supplierService.getSupplierById(
-      req.params.id
+      req.params.id,
+      req.user
     );
 
     return res.status(200).json({
@@ -41,10 +42,11 @@ const getSupplier = async (req, res) => {
 
     if (
       err.statusCode === 400 ||
+      err.statusCode === 403 ||
       err.name === 'ValidationError' ||
       err.name === 'CastError'
     ) {
-      return res.status(400).json({
+      return res.status(err.statusCode || 400).json({
         success: false,
         message: err.message
       });

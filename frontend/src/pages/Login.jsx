@@ -203,14 +203,14 @@ export default function Login() {
                 type="button"
                 onClick={() =>
                   fillCredentials(
-                    'manager@driveline.com',
-                    'Manager@123'
+                    'hr@driveline.com',
+                    'Hr@123456'
                   )
                 }
                 className="flex flex-col items-center p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors"
               >
                 <Briefcase className="w-4 h-4 mb-1" />
-                Manager
+                HR
               </button>
 
               <button

@@ -124,9 +124,8 @@ export default function Dashboard() {
           {[
             { label: 'New', value: metrics.newLeads, status: 'New' },
             { label: 'Contacted', value: metrics.contactedLeads, status: 'Contacted' },
-            { label: 'Follow Up', value: metrics.followupLeads, status: 'Follow Up' },
+            { label: 'Followup', value: metrics.followupLeads, status: 'Followup' },
             { label: 'Quotation', value: metrics.quotationLeads, status: 'Quotation' },
-            { label: 'Interested', value: metrics.interestedLeads, status: 'Interested' },
             { label: 'Converted', value: metrics.convertedLeads, status: 'Converted' },
             { label: 'Lost', value: metrics.lostLeads, status: 'Lost' },
           ].map(({ label, value, status }) => (
@@ -257,7 +256,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Admin/Manager only */}
+      {/* Admin performance overview */}
       {!isEmployee && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Employee Performance */}

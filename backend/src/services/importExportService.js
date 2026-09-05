@@ -365,7 +365,7 @@ const generateSampleTemplate = () => {
       2,
       'Needs OEM replacement clutch plate & release bearing',
       'Phone',
-      'Follow Up',
+      'Followup',
       'High',
       'EMP001',
       '2026-09-02',

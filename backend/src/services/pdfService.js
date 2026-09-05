@@ -197,8 +197,7 @@ const generateSingleLeadPDF = async (leadId, currentUser) => {
   // Check role authorization for single lead
   if (currentUser && currentUser.role === 'employee') {
     const isAssigned = lead.assignedTo && lead.assignedTo._id.toString() === currentUser._id.toString();
-    const isCreator = lead.createdBy && lead.createdBy._id.toString() === currentUser._id.toString();
-    if (!isAssigned && !isCreator) {
+    if (!isAssigned) {
       throw new Error('Unauthorized to export this lead');
     }
   }

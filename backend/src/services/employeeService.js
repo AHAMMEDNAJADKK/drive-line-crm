@@ -1,8 +1,13 @@
 const User = require('../models/User');
 const Lead = require('../models/Lead');
 const { assertObjectId } = require('../utils/ids');
+const { STAFF_ROLES } = require('../utils/roles');
+const {
+  normalizeVehicleSpecialization
+} = require('../utils/vehicleSpecializations');
+const { parseOptionalDate } = require('../utils/dates');
 
-const VALID_ROLES = ['admin', 'manager', 'employee'];
+const VALID_ROLES = STAFF_ROLES;
 const VALID_STATUSES = ['active', 'inactive'];
 
 const normalizeString = (value) => {
@@ -48,7 +53,8 @@ const listEmployees = async ({
       { employeeId: { $regex: searchText, $options: 'i' } },
       { branch: { $regex: searchText, $options: 'i' } },
       { position: { $regex: searchText, $options: 'i' } },
-      { garageShop: { $regex: searchText, $options: 'i' } }
+      { garageShop: { $regex: searchText, $options: 'i' } },
+      { vehicleSpecialization: { $regex: searchText, $options: 'i' } }
     ];
   }
 
@@ -163,6 +169,8 @@ const createEmployee = async ({
   password,
   idDetails,
   passportNumber,
+  passportExpireDate,
+  vehicleSpecialization,
   branch,
   position,
   garageShop
@@ -230,6 +238,9 @@ const createEmployee = async ({
     employeeId: cleanEmployeeId,
     idDetails: normalizeString(idDetails),
     passportNumber: normalizeString(passportNumber),
+    passportExpireDate: parseOptionalDate(passportExpireDate) || null,
+    vehicleSpecialization:
+      normalizeVehicleSpecialization(vehicleSpecialization) || '',
     branch: normalizeString(branch),
     position: normalizeString(position),
     garageShop: normalizeString(garageShop),
@@ -261,6 +272,8 @@ const updateEmployee = async (
     status,
     idDetails,
     passportNumber,
+    passportExpireDate,
+    vehicleSpecialization,
     branch,
     position,
     garageShop
@@ -364,6 +377,16 @@ const updateEmployee = async (
       normalizeString(passportNumber);
   }
 
+  if (passportExpireDate !== undefined) {
+    user.passportExpireDate =
+      parseOptionalDate(passportExpireDate);
+  }
+
+  if (vehicleSpecialization !== undefined) {
+    user.vehicleSpecialization =
+      normalizeVehicleSpecialization(vehicleSpecialization) || '';
+  }
+
   if (branch !== undefined) {
     user.branch = normalizeString(branch);
   }
@@ -436,7 +459,7 @@ const getActiveEmployeesList = async () => {
   return User.find({
     status: 'active'
   })
-    .select('_id name email employeeId role')
+    .select('_id name email employeeId role vehicleSpecialization')
     .sort({ name: 1 })
     .lean();
 };

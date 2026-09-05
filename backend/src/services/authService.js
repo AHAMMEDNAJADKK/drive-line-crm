@@ -31,6 +31,10 @@ const login = async ({ identifier, password }) => {
     throw new Error('Invalid credentials');
   }
 
+  if (!['admin', 'hr', 'employee'].includes(user.role)) {
+    throw new Error('This account role is no longer active. Please contact an administrator.');
+  }
+
   if (user.status !== 'active') {
     throw new Error(
       'Account is inactive. Please contact an administrator.'

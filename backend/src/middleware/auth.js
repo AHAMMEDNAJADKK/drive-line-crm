@@ -77,7 +77,7 @@ const authenticate = async (req, res, next) => {
 
 /**
  * Role-based access control middleware
- * @param  {...string} roles - Permitted roles (e.g. 'admin', 'manager')
+ * @param  {...string} roles - Permitted roles (e.g. 'admin', 'hr')
  */
 const authorize = (...roles) => {
   return (req, res, next) => {

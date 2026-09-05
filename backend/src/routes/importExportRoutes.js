@@ -9,13 +9,13 @@ router.use(authenticate);
 // Template download (any role)
 router.get('/template', ctrl.downloadTemplate);
 
-// Upload + parse file for mapping preview (admin & manager)
-router.post('/parse', authorize('admin', 'manager'), upload.single('file'), ctrl.parseFile);
+// Upload + parse file for mapping preview (admin only)
+router.post('/parse', authorize('admin'), upload.single('file'), ctrl.parseFile);
 
 // Execute import
-router.post('/import', authorize('admin', 'manager'), ctrl.importLeads);
+router.post('/import', authorize('admin'), ctrl.importLeads);
 
 // Download error report
-router.post('/error-report', authorize('admin', 'manager'), ctrl.downloadErrorReport);
+router.post('/error-report', authorize('admin'), ctrl.downloadErrorReport);
 
 module.exports = router;

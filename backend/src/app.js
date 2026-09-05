@@ -10,6 +10,7 @@ const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/authRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const leadRoutes = require('./routes/leadRoutes');
 const importExportRoutes = require('./routes/importExportRoutes');
@@ -38,6 +39,7 @@ app.use(
 // ============================================================
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://127.0.0.1:5173',
   'https://drive-line-crm-z245.vercel.app'
 ];
 
@@ -131,6 +133,9 @@ app.use('/api/import', importExportRoutes);
 
 // Dashboard
 app.use('/api/dashboard', dashboardRoutes);
+
+// HR/admin notifications
+app.use('/api/notifications', notificationRoutes);
 
 // Customers
 app.use('/api/customers', customerRoutes);

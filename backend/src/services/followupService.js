@@ -1,6 +1,6 @@
 const LeadFollowup = require('../models/LeadFollowup');
 const Lead = require('../models/Lead');
-const LeadActivity = require('../models/LeadActivity');
+const { normalizeLeadStatus } = require('../utils/leadStatus');
 
 /**
  * Add a new follow-up interaction to a lead
@@ -17,8 +17,7 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
   // Authorization check
   if (currentUser.role === 'employee') {
     const isAssigned = lead.assignedTo && lead.assignedTo.toString() === currentUser._id.toString();
-    const isCreator = lead.createdBy && lead.createdBy.toString() === currentUser._id.toString();
-    if (!isAssigned && !isCreator) {
+    if (!isAssigned) {
       throw new Error('Unauthorized to add follow-up to this lead');
     }
   }
@@ -42,8 +41,9 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
     lead.nextFollowUpDate = nextFollowUpDate ? new Date(nextFollowUpDate) : null;
   }
   if (statusChangedTo && statusChangedTo !== lead.status) {
-    lead.status = statusChangedTo;
-    if (statusChangedTo === 'Converted') {
+    const nextStatus = normalizeLeadStatus(statusChangedTo);
+    lead.status = nextStatus;
+    if (nextStatus === 'Converted') {
       lead.convertedAt = new Date();
     } else {
       lead.convertedAt = null;
@@ -93,8 +93,7 @@ const getFollowupsByLead = async (leadId, currentUser) => {
   // Check role authorization for single lead
   if (currentUser && currentUser.role === 'employee') {
     const isAssigned = lead.assignedTo && lead.assignedTo.toString() === currentUser._id.toString();
-    const isCreator = lead.createdBy && lead.createdBy.toString() === currentUser._id.toString();
-    if (!isAssigned && !isCreator) {
+    if (!isAssigned) {
       throw new Error('Unauthorized to view follow-ups for this lead');
     }
   }

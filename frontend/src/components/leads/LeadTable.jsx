@@ -189,7 +189,7 @@ export default function LeadTable({
 
                 {/* =================================================
                     ACTIONS
-                    Follow Up is intentionally FIRST and highlighted
+                        Followup is intentionally FIRST and highlighted
                 ================================================= */}
                 <td
                   className="py-3.5 px-4 text-right"
@@ -198,7 +198,7 @@ export default function LeadTable({
                   <div className="flex items-center justify-end gap-1.5">
 
                     {/* -------------------------------------------------
-                        FOLLOW-UP - PRIMARY ACTION
+                        FOLLOWUP - PRIMARY ACTION
                     ------------------------------------------------- */}
                     <button
                       type="button"
@@ -207,7 +207,7 @@ export default function LeadTable({
                       title="Add Follow-up"
                     >
                       <Calendar className="w-4 h-4" />
-                      <span>Follow Up</span>
+                      <span>Followup</span>
                     </button>
 
                     {/* -------------------------------------------------
@@ -372,7 +372,7 @@ export default function LeadTable({
                   title="Add Follow-up"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Follow Up</span>
+                  <span>Followup</span>
                 </button>
 
                 {/* -------------------------------------------------

@@ -38,6 +38,16 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    passportExpireDate: {
+      type: Date,
+      default: null
+    },
+    vehicleSpecialization: {
+      type: String,
+      enum: ['', 'German', 'Korean', 'Japanese', 'Other'],
+      default: '',
+      index: true
+    },
     branch: {
       type: String,
       trim: true,
@@ -55,7 +65,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'manager', 'employee'],
+      enum: ['admin', 'hr', 'employee'],
       default: 'employee',
       index: true
     },

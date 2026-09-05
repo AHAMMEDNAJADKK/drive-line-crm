@@ -1,12 +1,22 @@
 import { useState } from 'react';
 import {
-  Upload, FileSpreadsheet, Download, CheckCircle2, AlertTriangle,
-  ArrowRight, ArrowLeft, AlertCircle, Loader2, RefreshCw
+  Upload,
+  FileSpreadsheet,
+  Download,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import {
-  parseImportFileApi, executeImportApi, downloadImportTemplateApi,
-  downloadImportErrorsApi
+  parseImportFileApi,
+  executeImportApi,
+  downloadImportTemplateApi,
+  downloadImportErrorsApi,
 } from '../../services/importApi';
 import toast from 'react-hot-toast';
 
@@ -46,7 +56,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
   const [mapping, setMapping] = useState({});
 
   // Import options
-  const [duplicateHandling, setDuplicateHandling] = useState('skip'); // 'skip' | 'update' | 'both'
+  const [duplicateHandling, setDuplicateHandling] = useState('skip');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
@@ -70,10 +80,14 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       const validExts = ['.xlsx', '.xls', '.csv'];
-      const fileExt = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
-      
+      const fileExt = selectedFile.name
+        .substring(selectedFile.name.lastIndexOf('.'))
+        .toLowerCase();
+
       if (!validExts.includes(fileExt)) {
-        toast.error('Please select an Excel (.xlsx, .xls) or CSV (.csv) file');
+        toast.error(
+          'Please select an Excel (.xlsx, .xls) or CSV (.csv) file'
+        );
         return;
       }
 
@@ -91,41 +105,53 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
       toast.error('Please select an Excel or CSV file');
       return;
     }
+
     setUploading(true);
+
     try {
       const res = await parseImportFileApi(file);
       const { filePath: fPath, data } = res.data;
+
       setFilePath(fPath);
       setParsedData(data);
 
-      // Auto-map heuristics based on suggestedMapping from backend or client heuristics
       const initialMap = {};
       const headers = data.headers || [];
       const suggested = data.suggestedMapping || {};
 
       CRM_FIELDS.forEach(({ key }) => {
-        // Check if backend already suggested a match
-        const foundHeader = Object.keys(suggested).find(h => suggested[h] === key);
+        const foundHeader = Object.keys(suggested).find(
+          (h) => suggested[h] === key
+        );
+
         if (foundHeader) {
           initialMap[key] = foundHeader;
         } else {
           const cleanKey = key.toLowerCase();
+
           const matched = headers.find((h) => {
-            const cleanH = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanH = h
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '');
+
             return (
               cleanH === cleanKey ||
               cleanH.includes(cleanKey) ||
               cleanKey.includes(cleanH) ||
-              (cleanKey.includes('mobile') && cleanH.includes('phone')) ||
-              (cleanKey.includes('customername') && (cleanH.includes('customer') || cleanH.includes('name')))
+              (cleanKey.includes('mobile') &&
+                cleanH.includes('phone')) ||
+              (cleanKey.includes('customername') &&
+                (cleanH.includes('customer') || cleanH.includes('name')))
             );
           });
+
           if (matched) initialMap[key] = matched;
         }
       });
 
       setMapping(initialMap);
       setStep(2);
+
       toast.success('File uploaded and analyzed');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to parse file');
@@ -139,17 +165,23 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
       toast.error('Mobile Number mapping is required');
       return;
     }
+
     setImporting(true);
+
     try {
       const res = await executeImportApi({
         filePath,
         mapping,
         options: { duplicateHandling },
       });
+
       const result = res.data.data;
+
       setImportResult(result);
       setStep(4);
+
       toast.success('Import completed successfully');
+
       if (onSuccess) onSuccess();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Import failed');
@@ -158,58 +190,129 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
+  const steps = [
+    { number: 1, label: 'Upload' },
+    { number: 2, label: 'Map Columns' },
+    { number: 3, label: 'Options' },
+    { number: 4, label: 'Result' },
+  ];
+
   return (
-    <Modal isOpen={isOpen} onClose={handleModalClose} title="Import Leads" size="lg">
-      <div className="space-y-5 p-1">
-        {/* Wizard Progress Steps Header */}
-        <div className="flex items-center justify-between px-2 pt-1 pb-3 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-gray-700/50">
-          <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}`}>
-            <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] ${step >= 1 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40' : ''}`}>1</span>
-            Upload
-          </div>
-          <div className="flex-1 h-0.5 mx-2 bg-gray-200 dark:bg-gray-700" />
-          <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}`}>
-            <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] ${step >= 2 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40' : ''}`}>2</span>
-            Map Columns
-          </div>
-          <div className="flex-1 h-0.5 mx-2 bg-gray-200 dark:bg-gray-700" />
-          <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}`}>
-            <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] ${step >= 3 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40' : ''}`}>3</span>
-            Options
-          </div>
-          <div className="flex-1 h-0.5 mx-2 bg-gray-200 dark:bg-gray-700" />
-          <div className={`flex items-center gap-1.5 ${step >= 4 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}`}>
-            <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] ${step >= 4 ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40' : ''}`}>4</span>
-            Result
+    <Modal
+      isOpen={isOpen}
+      onClose={handleModalClose}
+      title="Import Leads"
+      size="lg"
+    >
+      <div className="p-5 sm:p-6">
+        {/* Wizard Progress */}
+        <div className="mb-6 overflow-x-auto pb-1">
+          <div className="flex min-w-[480px] items-center">
+            {steps.map((item, index) => {
+              const active = step >= item.number;
+              const current = step === item.number;
+
+              return (
+                <div
+                  key={item.number}
+                  className="flex flex-1 items-center"
+                >
+                  <div
+                    className={`flex items-center gap-2 ${
+                      active
+                        ? 'text-indigo-600 dark:text-indigo-400'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}
+                  >
+                    <span
+                      className={`
+                        flex h-7 w-7 flex-shrink-0 items-center justify-center
+                        rounded-full border
+                        text-xs font-bold
+                        transition-all
+                        ${
+                          active
+                            ? 'border-indigo-600 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-500/10'
+                            : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900'
+                        }
+                        ${
+                          current
+                            ? 'ring-4 ring-indigo-500/10'
+                            : ''
+                        }
+                      `}
+                    >
+                      {item.number}
+                    </span>
+
+                    <span className="hidden text-xs font-semibold sm:block">
+                      {item.label}
+                    </span>
+                  </div>
+
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`
+                        mx-2 h-px flex-1 transition-colors
+                        ${
+                          step > item.number
+                            ? 'bg-indigo-500'
+                            : 'bg-gray-200 dark:bg-gray-700'
+                        }
+                      `}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* STEP 1: Upload */}
         {step === 1 && (
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between px-1">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Upload a spreadsheet containing leads. Supported formats: .xlsx, .xls, .csv (Max 10MB)
-              </p>
+          <div className="space-y-5">
+            <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-700/60 dark:bg-gray-800/40 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Upload your lead spreadsheet
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                  Supported formats: .xlsx, .xls, .csv · Maximum size: 10MB
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={downloadImportTemplateApi}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex-shrink-0"
+                className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:text-indigo-500 hover:underline dark:text-indigo-400"
               >
-                <Download className="w-3.5 h-3.5" /> Download Template
+                <Download className="h-3.5 w-3.5" />
+                Download Template
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/20">
-              <Upload className="w-10 h-10 text-indigo-500 dark:text-indigo-400 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {file ? file.name : 'Choose an Excel (.xlsx, .xls) or CSV file'}
+            <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center transition-all hover:border-indigo-400 hover:bg-indigo-50/30 dark:border-gray-700 dark:bg-gray-900/20 dark:hover:border-indigo-500 dark:hover:bg-indigo-500/5 sm:p-10">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                {file ? (
+                  <FileSpreadsheet className="h-7 w-7" />
+                ) : (
+                  <Upload className="h-7 w-7" />
+                )}
+              </div>
+
+              <p className="break-all text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {file
+                  ? file.name
+                  : 'Choose an Excel or CSV file'}
               </p>
+
               {file && (
-                <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium">
+                <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
                   {(file.size / 1024).toFixed(1)} KB selected
                 </p>
               )}
+
               <input
                 type="file"
                 accept=".xlsx, .xls, .csv"
@@ -217,23 +320,75 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
                 className="hidden"
                 id="lead-file-upload"
               />
+
               <label
                 htmlFor="lead-file-upload"
-                className="mt-4 inline-block px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors"
+                className="
+                  mt-5
+                  inline-flex
+                  cursor-pointer
+                  items-center
+                  gap-2
+                  rounded-xl
+                  border border-gray-200
+                  bg-white
+                  px-4 py-2.5
+                  text-xs
+                  font-semibold
+                  text-gray-700
+                  shadow-sm
+                  transition-all
+                  hover:bg-gray-50
+                  dark:border-gray-700
+                  dark:bg-gray-800
+                  dark:text-gray-300
+                  dark:hover:bg-gray-700
+                "
               >
+                <Upload className="h-3.5 w-3.5" />
                 Browse Spreadsheet
               </label>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end border-t border-gray-100 pt-5 dark:border-gray-700/60">
               <button
                 type="button"
                 onClick={handleUploadAndParse}
                 disabled={!file || uploading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 shadow transition-colors"
+                className="
+                  inline-flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-indigo-600
+                  px-5 py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-indigo-500
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-indigo-500/30
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  sm:w-auto
+                "
               >
-                {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Continue to Field Mapping <ArrowRight className="w-4 h-4" />
+                {uploading && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+
+                {uploading
+                  ? 'Analyzing...'
+                  : 'Continue to Field Mapping'}
+
+                {!uploading && (
+                  <ArrowRight className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
@@ -241,44 +396,90 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
 
         {/* STEP 2: Field Mapping */}
         {step === 2 && parsedData && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-700/60 dark:bg-gray-800/40 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Map Spreadsheet Columns to CRM Fields
+                  Map Spreadsheet Columns
                 </h3>
-                <p className="text-xs text-gray-500">
-                  Total {parsedData.totalRows || parsedData.totalRowsCount} data rows found in file
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {parsedData.totalRows ||
+                    parsedData.totalRowsCount ||
+                    0}{' '}
+                  data rows found in the file
                 </p>
               </div>
+
               {!mapping.mobileNumber && (
-                <span className="text-xs text-red-500 font-medium">
-                  * Mobile Number must be mapped
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 dark:bg-red-500/10 dark:text-red-400">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Mobile Number is required
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+            <div className="grid max-h-[50vh] grid-cols-1 gap-3 overflow-y-auto pr-1 scrollbar-thin md:grid-cols-2">
               {CRM_FIELDS.map((f) => (
                 <div
                   key={f.key}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors ${
-                    f.required && !mapping[f.key]
-                      ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-800/40'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/50'
-                  }`}
+                  className={`
+                    rounded-xl
+                    border
+                    p-3
+                    transition-all
+                    ${
+                      f.required && !mapping[f.key]
+                        ? 'border-red-200 bg-red-50/50 dark:border-red-800/40 dark:bg-red-900/10'
+                        : 'border-gray-100 bg-gray-50/70 dark:border-gray-700/60 dark:bg-gray-800/40'
+                    }
+                  `}
                 >
-                  <span className={`text-xs font-medium ${f.required ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
-                    {f.label}
-                  </span>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span
+                      className={`
+                        min-w-0 text-xs
+                        ${
+                          f.required
+                            ? 'font-semibold text-gray-900 dark:text-gray-100'
+                            : 'font-medium text-gray-700 dark:text-gray-300'
+                        }
+                      `}
+                    >
+                      {f.label}
+                    </span>
+                  </div>
+
                   <select
                     value={mapping[f.key] || ''}
                     onChange={(e) =>
-                      setMapping({ ...mapping, [f.key]: e.target.value || undefined })
+                      setMapping({
+                        ...mapping,
+                        [f.key]: e.target.value || undefined,
+                      })
                     }
-                    className="text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 max-w-[150px] truncate"
+                    className="
+                      block
+                      w-full
+                      rounded-lg
+                      border border-gray-200
+                      bg-white
+                      px-3 py-2
+                      text-xs
+                      text-gray-800
+                      shadow-sm
+                      transition-all
+                      focus:border-indigo-500
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-indigo-500/20
+                      dark:border-gray-700
+                      dark:bg-gray-900
+                      dark:text-gray-200
+                    "
                   >
                     <option value="">— Ignore —</option>
+
                     {parsedData.headers?.map((h) => (
                       <option key={h} value={h}>
                         {h}
@@ -289,21 +490,61 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/50">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 dark:border-gray-700/60 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-1.5
+                  rounded-xl
+                  px-4 py-2.5
+                  text-xs
+                  font-semibold
+                  text-gray-600
+                  transition-colors
+                  hover:bg-gray-100
+                  hover:text-gray-900
+                  dark:text-gray-400
+                  dark:hover:bg-gray-800
+                  dark:hover:text-gray-100
+                "
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Upload
+                <ArrowLeft className="h-4 w-4" />
+                Back to Upload
               </button>
+
               <button
                 type="button"
                 onClick={() => setStep(3)}
                 disabled={!mapping.mobileNumber}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 shadow transition-colors"
+                className="
+                  inline-flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-1.5
+                  rounded-xl
+                  bg-indigo-600
+                  px-5 py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-indigo-500
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-indigo-500/30
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  sm:w-auto
+                "
               >
-                Next: Duplicate Options <ArrowRight className="w-4 h-4" />
+                Next: Duplicate Options
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -312,81 +553,170 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
         {/* STEP 3: Preview & Options */}
         {step === 3 && parsedData && (
           <div className="space-y-5">
-            <div className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/40 text-xs space-y-1">
-              <p className="font-semibold text-indigo-900 dark:text-indigo-200">
-                Ready to process {parsedData.totalRows || parsedData.totalRowsCount} rows from spreadsheet
-              </p>
-              <p className="text-indigo-700 dark:text-indigo-300">
-                Primary identifier column:{' '}
-                <span className="font-mono font-bold">{mapping.mobileNumber}</span>
-              </p>
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 dark:border-indigo-800/40 dark:bg-indigo-900/20">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                  <FileSpreadsheet className="h-4 w-4" />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                    Ready to process{' '}
+                    {parsedData.totalRows ||
+                      parsedData.totalRowsCount ||
+                      0}{' '}
+                    rows
+                  </p>
+
+                  <p className="mt-1 text-xs text-indigo-700 dark:text-indigo-300">
+                    Primary identifier:{' '}
+                    <span className="font-mono font-bold">
+                      {mapping.mobileNumber}
+                    </span>
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                Duplicate Mobile Number Handling:
-              </label>
-              <div className="space-y-2">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Duplicate Mobile Number Handling
+                </h3>
+
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Choose how existing mobile numbers should be handled.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
                 {[
                   {
                     id: 'skip',
-                    title: 'Skip Duplicates (Recommended)',
+                    title: 'Skip Duplicates',
                     desc: 'Leave existing leads untouched and skip imported duplicate rows.',
+                    recommended: true,
                   },
                   {
                     id: 'update',
                     title: 'Update Existing Leads',
-                    desc: 'Overwrite existing customer details with the new values from spreadsheet.',
+                    desc: 'Overwrite existing customer details with the new spreadsheet values.',
                   },
                   {
                     id: 'both',
-                    title: 'Import Both (Allow Duplicates)',
-                    desc: 'Create new lead entries even if mobile number already exists.',
+                    title: 'Import Both',
+                    desc: 'Create a new lead even when the mobile number already exists.',
                   },
                 ].map((opt) => (
                   <label
                     key={opt.id}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      duplicateHandling === opt.id
-                        ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30'
-                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                    }`}
+                    className={`
+                      flex
+                      cursor-pointer
+                      items-start
+                      gap-3
+                      rounded-xl
+                      border
+                      p-4
+                      transition-all
+                      ${
+                        duplicateHandling === opt.id
+                          ? 'border-indigo-500 bg-indigo-50/60 shadow-sm dark:border-indigo-500 dark:bg-indigo-950/30'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750'
+                      }
+                    `}
                   >
                     <input
                       type="radio"
                       name="dup"
                       value={opt.id}
                       checked={duplicateHandling === opt.id}
-                      onChange={(e) => setDuplicateHandling(e.target.value)}
-                      className="mt-0.5 text-indigo-600"
+                      onChange={(e) =>
+                        setDuplicateHandling(e.target.value)
+                      }
+                      className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                        {opt.title}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {opt.title}
+                        </p>
+
+                        {opt.recommended && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                            Recommended
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                        {opt.desc}
                       </p>
-                      <p className="text-[11px] text-gray-500">{opt.desc}</p>
                     </div>
                   </label>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700/50">
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 dark:border-gray-700/60 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-1.5
+                  rounded-xl
+                  px-4 py-2.5
+                  text-xs
+                  font-semibold
+                  text-gray-600
+                  transition-colors
+                  hover:bg-gray-100
+                  hover:text-gray-900
+                  dark:text-gray-400
+                  dark:hover:bg-gray-800
+                  dark:hover:text-gray-100
+                "
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Mapping
+                <ArrowLeft className="h-4 w-4" />
+                Back to Mapping
               </button>
+
               <button
                 type="button"
                 onClick={handleExecuteImport}
                 disabled={importing}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 shadow transition-colors"
+                className="
+                  inline-flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-indigo-600
+                  px-6 py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-indigo-500
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-indigo-500/30
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  sm:w-auto
+                "
               >
-                {importing && <Loader2 className="w-4 h-4 animate-spin" />}
-                Execute Import
+                {importing && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+
+                {importing ? 'Importing...' : 'Execute Import'}
               </button>
             </div>
           </div>
@@ -394,66 +724,171 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
 
         {/* STEP 4: Result */}
         {step === 4 && importResult && (
-          <div className="space-y-5 py-2 text-center">
-            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Import Completed</h3>
-              <p className="text-xs text-gray-500 mt-0.5">Summary of processed records</p>
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+
+              <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-gray-100">
+                Import Completed
+              </h3>
+
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Summary of processed records
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-left">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/50">
-                <span className="text-[11px] text-gray-500">Total Rows</span>
-                <p className="text-base font-bold text-gray-900 dark:text-gray-100 mt-0.5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-gray-700/60 dark:bg-gray-800/50">
+                <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                  Total Rows
+                </span>
+
+                <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
                   {importResult.totalRows ?? 0}
                 </p>
               </div>
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/40">
-                <span className="text-[11px] text-emerald-600">Created New</span>
-                <p className="text-base font-bold text-emerald-600 mt-0.5">
-                  {importResult.imported ?? importResult.importedCount ?? 0}
+
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/20">
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  Created New
+                </span>
+
+                <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  {importResult.imported ??
+                    importResult.importedCount ??
+                    0}
                 </p>
               </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/40">
-                <span className="text-[11px] text-blue-600">Updated</span>
-                <p className="text-base font-bold text-blue-600 mt-0.5">
-                  {importResult.updated ?? importResult.updatedCount ?? 0}
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-800/40 dark:bg-blue-900/20">
+                <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                  Updated
+                </span>
+
+                <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">
+                  {importResult.updated ??
+                    importResult.updatedCount ??
+                    0}
                 </p>
               </div>
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/40">
-                <span className="text-[11px] text-amber-600">Duplicates Skipped</span>
-                <p className="text-base font-bold text-amber-600 mt-0.5">
-                  {importResult.duplicatesSkipped ?? importResult.skippedCount ?? 0}
+
+              <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-900/20">
+                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  Duplicates Skipped
+                </span>
+
+                <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">
+                  {importResult.duplicatesSkipped ??
+                    importResult.skippedCount ??
+                    0}
                 </p>
               </div>
             </div>
 
-            {importResult.errorRows && importResult.errorRows.length > 0 && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => downloadImportErrorsApi(importResult.errorRows)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-semibold hover:bg-red-100 transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4" /> Download Error Report ({importResult.errorRows.length} errors)
-                </button>
-              </div>
-            )}
+            {importResult.errorRows &&
+              importResult.errorRows.length > 0 && (
+                <div className="rounded-xl border border-red-100 bg-red-50/70 p-4 dark:border-red-800/40 dark:bg-red-900/10">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
 
-            <div className="flex justify-center gap-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                      <div>
+                        <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                          Some rows could not be imported
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-red-600/80 dark:text-red-400/80">
+                          {importResult.errorRows.length} error
+                          {importResult.errorRows.length !== 1
+                            ? 's'
+                            : ''}{' '}
+                          found.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadImportErrorsApi(
+                          importResult.errorRows
+                        )
+                      }
+                      className="
+                        inline-flex
+                        w-full
+                        items-center
+                        justify-center
+                        gap-1.5
+                        rounded-xl
+                        bg-red-600
+                        px-4 py-2.5
+                        text-xs
+                        font-semibold
+                        text-white
+                        transition-colors
+                        hover:bg-red-500
+                        sm:w-auto
+                      "
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Error Report
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            <div className="flex flex-col-reverse gap-2.5 border-t border-gray-100 pt-5 dark:border-gray-700/60 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={resetWizard}
-                className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-200"
+                className="
+                  inline-flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  border border-gray-200
+                  bg-white
+                  px-5 py-2.5
+                  text-sm
+                  font-semibold
+                  text-gray-700
+                  transition-all
+                  hover:bg-gray-50
+                  dark:border-gray-700
+                  dark:bg-gray-900
+                  dark:text-gray-300
+                  dark:hover:bg-gray-800
+                  sm:w-auto
+                "
               >
+                <RefreshCw className="h-4 w-4" />
                 Import Another File
               </button>
+
               <button
                 type="button"
                 onClick={handleModalClose}
-                className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500 shadow"
+                className="
+                  w-full
+                  rounded-xl
+                  bg-indigo-600
+                  px-5 py-2.5
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-indigo-500
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-indigo-500/30
+                  sm:w-auto
+                "
               >
                 Done
               </button>

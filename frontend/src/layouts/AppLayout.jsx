@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   UserSquare2,
   UserRound,
   Building2,
@@ -11,6 +12,8 @@ import {
   X,
   Sun,
   Moon,
+  ChevronLeft,
+  ChevronRight,
   Plus,
   Car
 } from 'lucide-react';
@@ -25,35 +28,30 @@ export default function AppLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickLeadOpen, setQuickLeadOpen] = useState(false);
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme');
+    if (typeof window === 'undefined') return 'light';
 
-      if (saved) {
-        return saved;
-      }
+    const savedTheme = localStorage.getItem('theme');
 
-      return document.documentElement.classList.contains('dark')
-        ? 'dark'
-        : 'light';
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
     }
 
-    return 'light';
+    return document.documentElement.classList.contains('dark')
+      ? 'dark'
+      : 'light';
   });
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme((currentTheme) =>
+      currentTheme === 'dark' ? 'light' : 'dark'
+    );
   };
 
   const handleLogout = async () => {
@@ -62,37 +60,18 @@ export default function AppLayout() {
     navigate('/login');
   };
 
-  const navItems = [
-    {
-      to: '/dashboard',
-      icon: LayoutDashboard,
-      label: 'Dashboard'
-    },
-    {
-      to: '/leads',
-      icon: UserSquare2,
-      label: 'Leads'
-    },
-    ...(user?.role !== 'employee'
-      ? [
-          {
-            to: '/employees',
-            icon: Users,
-            label: 'Employees'
-          }
-        ]
-      : []),
-    {
-      to: '/customers',
-      icon: UserRound,
-      label: 'Customers'
-    },
-    {
-      to: '/suppliers',
-      icon: Building2,
-      label: 'Suppliers'
-    }
-  ];
+  const navItems = user?.role === 'hr'
+    ? [
+        { to: '/hr', icon: UserCog, label: 'HR' },
+        { to: '/employees', icon: Users, label: 'Employees' }
+      ]
+    : [
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/leads', icon: UserSquare2, label: 'Leads' },
+        ...(user?.role === 'admin' ? [{ to: '/employees', icon: Users, label: 'Employees' }] : []),
+        { to: '/customers', icon: UserRound, label: 'Customers' },
+        { to: '/suppliers', icon: Building2, label: 'Suppliers' }
+      ];
 
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
@@ -121,15 +100,18 @@ export default function AppLayout() {
     return current?.label || 'Drive Line';
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ mobile = false }) => {
+    const collapsed = mobile ? false : sidebarCollapsed;
+
+    return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700/50">
+      <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700/50`}>
         <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
           <Car className="w-5 h-5 text-white" />
         </div>
 
-        <div>
+        {!collapsed && <div>
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">
             Drive Line
           </p>
@@ -137,22 +119,35 @@ export default function AppLayout() {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Automobile Parts CRM
           </p>
-        </div>
+        </div>}
+
+        {!mobile && (
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((value) => !value)}
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       {/* Quick Add Lead */}
-      <div className="px-3 py-3">
+      {user?.role !== 'hr' && <div className="px-3 py-3">
         <button
           onClick={() => {
             setQuickLeadOpen(true);
             setSidebarOpen(false);
           }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
+          title="Add Lead"
         >
           <Plus className="w-4 h-4" />
-          Add Lead
+          {!collapsed && 'Add Lead'}
         </button>
-      </div>
+      </div>}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto scrollbar-thin">
@@ -164,7 +159,7 @@ export default function AppLayout() {
             onClick={() => setSidebarOpen(false)}
           >
             <item.icon className="w-4 h-4 flex-shrink-0" />
-            {item.label}
+            {!collapsed && item.label}
           </NavLink>
         ))}
       </nav>
@@ -180,7 +175,7 @@ export default function AppLayout() {
             {user?.name?.charAt(0).toUpperCase()}
           </div>
 
-          <div className="min-w-0">
+          {!collapsed && <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
               {user?.name}
             </p>
@@ -188,7 +183,7 @@ export default function AppLayout() {
             <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
               {user?.role}
             </p>
-          </div>
+          </div>}
         </NavLink>
 
         <button
@@ -196,16 +191,17 @@ export default function AppLayout() {
           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
-          Sign Out
+          {!collapsed && 'Sign Out'}
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 lg:flex-col bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/50">
+      <aside className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700/50 transition-all duration-200 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-60'}`}>
         <SidebarContent />
       </aside>
 
@@ -232,11 +228,11 @@ export default function AppLayout() {
           </button>
         </div>
 
-        <SidebarContent />
+        <SidebarContent mobile />
       </aside>
 
       {/* Main content area */}
-      <div className="lg:pl-60 flex flex-col min-h-screen">
+      <div className={`flex flex-col min-h-screen transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
         {/* Top nav */}
         <nav className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700/50 px-4 py-3">
           <div className="flex items-center justify-between">
@@ -258,23 +254,20 @@ export default function AppLayout() {
 
             <div className="flex items-center gap-2">
               {/* Quick Add */}
-              <button
+              {user?.role !== 'hr' && <button
                 onClick={() => setQuickLeadOpen(true)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Quick Lead
-              </button>
+              </button>}
 
-              {/* Theme Toggle */}
               <button
+                type="button"
                 onClick={toggleTheme}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus:outline-none transition-colors"
-                title={
-                  theme === 'dark'
-                    ? 'Switch to Light Mode'
-                    : 'Switch to Dark Mode'
-                }
+                className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {theme === 'dark' ? (
                   <Sun className="h-5 w-5" />

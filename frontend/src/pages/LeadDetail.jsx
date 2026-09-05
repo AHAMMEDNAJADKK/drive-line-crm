@@ -116,7 +116,7 @@ export default function LeadDetail() {
   if (error) return <ErrorState message={error} onRetry={fetchLeadData} />;
   if (!lead) return null;
 
-  const canAssign = user?.role === 'admin' || user?.role === 'manager';
+  const canAssign = user?.role === 'admin';
   const canDelete = user?.role === 'admin';
 
   return (
