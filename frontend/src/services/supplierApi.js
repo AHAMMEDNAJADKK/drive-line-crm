@@ -1,5 +1,6 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000/api';
 
 const getToken = () => {
   return (
@@ -17,7 +18,9 @@ const getHeaders = () => {
 
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
+    ...(token
+      ? { Authorization: `Bearer ${token}` }
+      : {})
   };
 };
 
@@ -40,48 +43,85 @@ const handleResponse = async (response) => {
   return result;
 };
 
+// ============================================================
+// SUPPLIERS
+// ============================================================
+
 // GET /api/suppliers
-export const getSuppliers = async (params = {}) => {
-  const queryParams = new URLSearchParams();
+export const getSuppliers = async (
+  params = {}
+) => {
+  const queryParams =
+    new URLSearchParams();
 
-  Object.entries(params).forEach(([key, value]) => {
-    if (
-      value !== undefined &&
-      value !== null &&
-      String(value).trim() !== ''
-    ) {
-      queryParams.append(key, value);
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ''
+      ) {
+        queryParams.append(
+          key,
+          value
+        );
+      }
     }
-  });
+  );
 
-  const queryString = queryParams.toString();
+  const queryString =
+    queryParams.toString();
 
   const response = await fetch(
-    `${API_BASE_URL}/suppliers${queryString ? `?${queryString}` : ''}`,
+    `${API_BASE_URL}/suppliers${
+      queryString
+        ? `?${queryString}`
+        : ''
+    }`,
     {
       method: 'GET',
       headers: getHeaders()
     }
   );
 
-  const result = await handleResponse(response);
+  const result =
+    await handleResponse(response);
 
   return {
-    success: result?.success ?? true,
-    data: result?.data || [],
-    pagination: result?.pagination || {
-      page: Number(params.page) || 1,
-      limit: Number(params.limit) || 25,
-      total: Array.isArray(result?.data) ? result.data.length : 0,
-      pages: 1
-    }
+    success:
+      result?.success ?? true,
+
+    data:
+      result?.data || [],
+
+    pagination:
+      result?.pagination || {
+        page:
+          Number(params.page) || 1,
+
+        limit:
+          Number(params.limit) || 25,
+
+        total:
+          Array.isArray(
+            result?.data
+          )
+            ? result.data.length
+            : 0,
+
+        pages: 1
+      }
   };
 };
 
 // GET /api/suppliers/:id
-export const getSupplier = async (id) => {
+export const getSupplier = async (
+  id
+) => {
   if (!id) {
-    throw new Error('Supplier ID is required');
+    throw new Error(
+      'Supplier ID is required'
+    );
   }
 
   const response = await fetch(
@@ -92,31 +132,48 @@ export const getSupplier = async (id) => {
     }
   );
 
-  const result = await handleResponse(response);
+  const result =
+    await handleResponse(response);
 
-  return result?.data || result;
+  return (
+    result?.data ||
+    result
+  );
 };
 
 // POST /api/suppliers
-export const createSupplier = async (supplierData) => {
+export const createSupplier = async (
+  supplierData
+) => {
   const response = await fetch(
     `${API_BASE_URL}/suppliers`,
     {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(supplierData)
+      body: JSON.stringify(
+        supplierData
+      )
     }
   );
 
-  const result = await handleResponse(response);
+  const result =
+    await handleResponse(response);
 
-  return result?.data || result;
+  return (
+    result?.data ||
+    result
+  );
 };
 
 // PATCH /api/suppliers/:id
-export const updateSupplier = async (id, supplierData) => {
+export const updateSupplier = async (
+  id,
+  supplierData
+) => {
   if (!id) {
-    throw new Error('Supplier ID is required');
+    throw new Error(
+      'Supplier ID is required'
+    );
   }
 
   const response = await fetch(
@@ -124,18 +181,107 @@ export const updateSupplier = async (id, supplierData) => {
     {
       method: 'PATCH',
       headers: getHeaders(),
-      body: JSON.stringify(supplierData)
+      body: JSON.stringify(
+        supplierData
+      )
     }
   );
 
-  const result = await handleResponse(response);
+  const result =
+    await handleResponse(response);
 
-  return result?.data || result;
+  return (
+    result?.data ||
+    result
+  );
 };
+
+// ============================================================
+// VEHICLE SPECIALIZATIONS
+// ============================================================
+
+/**
+ * GET /api/suppliers/vehicle-specializations
+ *
+ * Returns all vehicle specializations
+ * stored in MongoDB.
+ */
+export const getVehicleSpecializations =
+  async () => {
+    const response = await fetch(
+      `${API_BASE_URL}/suppliers/vehicle-specializations`,
+      {
+        method: 'GET',
+        headers: getHeaders()
+      }
+    );
+
+    const result =
+      await handleResponse(response);
+
+    return {
+      success:
+        result?.success ?? true,
+
+      data:
+        Array.isArray(
+          result?.data
+        )
+          ? result.data
+          : []
+    };
+  };
+
+/**
+ * POST /api/suppliers/vehicle-specializations
+ *
+ * Adds a new specialization to MongoDB.
+ *
+ * Example:
+ * {
+ *   name: "Japan Car"
+ * }
+ */
+export const createVehicleSpecialization =
+  async (name) => {
+    const specializationName =
+      String(name || '').trim();
+
+    if (!specializationName) {
+      throw new Error(
+        'Vehicle specialization name is required'
+      );
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/suppliers/vehicle-specializations`,
+      {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: specializationName
+        })
+      }
+    );
+
+    const result =
+      await handleResponse(response);
+
+    return (
+      result?.data ||
+      result
+    );
+  };
+
+// ============================================================
+// DEFAULT EXPORT
+// ============================================================
 
 export default {
   getSuppliers,
   getSupplier,
   createSupplier,
-  updateSupplier
+  updateSupplier,
+  getVehicleSpecializations,
+  createVehicleSpecialization
 };

@@ -5,50 +5,83 @@ const VEHICLE_SPECIALIZATIONS = [
   'Other'
 ];
 
+/**
+ * Normalize a vehicle specialization.
+ *
+ * Existing default values are returned using their standard casing.
+ * Custom specializations are also allowed and stored after trimming.
+ *
+ * Examples:
+ *   "german"   -> "German"
+ *   "Japanese" -> "Japanese"
+ *   "Japan Car" -> "Japan Car"
+ */
 const normalizeVehicleSpecialization = (value) => {
   if (value === undefined) return undefined;
-  if (value === null || value === '') return '';
+
+  if (value === null || value === '') {
+    return '';
+  }
 
   const cleaned = String(value).trim();
 
-  if (!cleaned) return '';
+  if (!cleaned) {
+    return '';
+  }
 
-  const match = VEHICLE_SPECIALIZATIONS.find(
+  // Preserve the standard casing of existing/default specializations.
+  const existingSpecialization = VEHICLE_SPECIALIZATIONS.find(
     (item) => item.toLowerCase() === cleaned.toLowerCase()
   );
 
-  if (!match) {
-    throw new Error(
-      `Invalid vehicle specialization. Allowed values: ${VEHICLE_SPECIALIZATIONS.join(', ')}`
-    );
+  if (existingSpecialization) {
+    return existingSpecialization;
   }
 
-  return match;
+  // Allow custom specializations.
+  return cleaned;
 };
 
 /**
- * Employees with a specialization only see matching suppliers.
- * Unclassified suppliers (empty specialization) remain visible so
- * existing records continue to work.
- * Employees without a specialization keep full supplier visibility.
+ * Check whether a supplier matches an employee's specialization.
  */
 const supplierMatchesEmployeeSpecialization = (supplier, user) => {
-  if (!user || user.role !== 'employee') return true;
+  if (!user || user.role !== 'employee') {
+    return true;
+  }
 
   const employeeSpec = user.vehicleSpecialization;
-  if (!employeeSpec) return true;
+
+  if (!employeeSpec) {
+    return true;
+  }
 
   const supplierSpec = supplier?.vehicleSpecialization;
-  if (!supplierSpec) return true;
+
+  if (!supplierSpec) {
+    return true;
+  }
 
   return supplierSpec === employeeSpec;
 };
 
+/**
+ * Build the supplier query for employees.
+ *
+ * Employees can see:
+ * - Suppliers matching their specialization
+ * - Suppliers without a specialization
+ */
 const employeeSupplierQuery = (user) => {
-  if (!user || user.role !== 'employee') return {};
+  if (!user || user.role !== 'employee') {
+    return {};
+  }
 
   const employeeSpec = user.vehicleSpecialization;
-  if (!employeeSpec) return {};
+
+  if (!employeeSpec) {
+    return {};
+  }
 
   return {
     $or: [
