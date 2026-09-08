@@ -24,7 +24,6 @@ export default function EmployeeTable({
               <th className="px-6 py-4">Employee ID</th>
               <th className="px-6 py-4">Contact</th>
               <th className="px-6 py-4">Vehicle</th>
-              <th className="px-6 py-4">Passport Expiry</th>
               <th className="px-6 py-4">Role</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Leads Assigned</th>
@@ -57,9 +56,6 @@ export default function EmployeeTable({
                 </td>
                 <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
                   {emp.vehicleSpecialization || '—'}
-                </td>
-                <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-400">
-                  {emp.passportExpireDate ? new Date(emp.passportExpireDate).toLocaleDateString('en-GB') : '—'}
                 </td>
                 <td className="px-6 py-4">
                   <RoleBadge role={emp.role} />
@@ -156,9 +152,6 @@ export default function EmployeeTable({
               </div>
               <div className="text-gray-500">
                 Vehicle: <span className="text-gray-800 dark:text-gray-200 font-medium">{emp.vehicleSpecialization || '—'}</span>
-              </div>
-              <div className="text-gray-500">
-                Passport: <span className="text-gray-800 dark:text-gray-200 font-medium">{emp.passportExpireDate ? new Date(emp.passportExpireDate).toLocaleDateString('en-GB') : '—'}</span>
               </div>
               <div className="text-gray-500">
                 Assigned Leads:{' '}

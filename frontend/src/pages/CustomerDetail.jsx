@@ -54,6 +54,9 @@ const getCustomerId = (customer) =>
   customer?.id ||
   customer?.customerId;
 
+const isConvertedLead = (customer) =>
+  Boolean(customer?.convertedFromLead || customer?.leadId || customer?.source === 'Converted Lead');
+
 const getCustomerLeads = (customer) => {
   if (Array.isArray(customer?.leads)) {
     return customer.leads;
@@ -382,6 +385,12 @@ export default function CustomerDetail() {
                   ? 'Active'
                   : 'Inactive'}
               </span>
+
+              {isConvertedLead(customer) && (
+                <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                  Converted Lead
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 mt-2">

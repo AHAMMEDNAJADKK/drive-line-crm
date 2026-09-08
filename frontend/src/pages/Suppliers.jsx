@@ -76,6 +76,8 @@ const Suppliers = () => {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedSpec, setSelectedSpec] = useState('');
+
 
   const loadSuppliers = async (page = pagination.page) => {
     try {
@@ -130,12 +132,14 @@ const Suppliers = () => {
   const openCreateModal = () => {
     setEditingSupplier(null);
     setForm(EMPTY_FORM);
+    setSelectedSpec('');
     setError('');
     setShowModal(true);
   };
 
   const openEditModal = (supplier) => {
     setEditingSupplier(supplier);
+    setSelectedSpec('');
 
     setForm({
       name: supplier.name || '',
@@ -169,8 +173,10 @@ const Suppliers = () => {
 
     setShowModal(false);
     setEditingSupplier(null);
+    setSelectedSpec('');
     setForm(EMPTY_FORM);
   };
+
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -803,19 +809,59 @@ const Suppliers = () => {
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Vehicle Specialization
                   </label>
-                  <select
-                    name="vehicleSpecialization"
-                    value={form.vehicleSpecialization}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Not specified</option>
-                    <option value="German">German</option>
-                    <option value="Korean">Korean</option>
-                    <option value="Japanese">Japanese</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedSpec}
+                      onChange={(e) => setSelectedSpec(e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                    >
+                      <option value="">Select specialization</option>
+                      <option value="German">German</option>
+                      <option value="Korean">Korean</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedSpec) {
+                          setForm((prev) => ({
+                            ...prev,
+                            vehicleSpecialization: selectedSpec
+                          }));
+                          setSelectedSpec('');
+                        }
+                      }}
+                      disabled={!selectedSpec}
+                      className="inline-flex items-center justify-center p-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+                      title="Add Specialization"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  {form.vehicleSpecialization && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        {form.vehicleSpecialization}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((prev) => ({
+                              ...prev,
+                              vehicleSpecialization: ''
+                            }))
+                          }
+                          className="text-indigo-500 hover:text-red-500 dark:text-indigo-400 dark:hover:text-red-400 transition-colors"
+                          title="Remove specialization"
+                        >
+                          <X size={14} />
+                        </button>
+                      </span>
+                    </div>
+                  )}
                 </div>
+
 
                 <div className="md:col-span-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">

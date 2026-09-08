@@ -287,12 +287,6 @@ export default function EmployeeDetail() {
           />
 
           <InfoItem
-            icon={CreditCard}
-            label="Passport Expiry"
-            value={employee.passportExpireDate ? new Date(employee.passportExpireDate).toLocaleDateString('en-GB') : 'Not specified'}
-          />
-
-          <InfoItem
             icon={User}
             label="Vehicle Specialization"
             value={employee.vehicleSpecialization || 'Not specified'}

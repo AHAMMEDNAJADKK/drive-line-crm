@@ -2,6 +2,7 @@ const Lead = require('../models/Lead');
 const LeadActivity = require('../models/LeadActivity');
 const LeadFollowup = require('../models/LeadFollowup');
 const User = require('../models/User');
+const { upsertCustomerFromLead } = require('./customerService');
 const {
   normalizePhoneNumber,
   getCanonicalPhoneKey,
@@ -1122,6 +1123,23 @@ const updateLeadStatus = async (
     new Date();
 
   await lead.save();
+
+  // Link the converted lead to one customer, preserving idempotency.
+  if (status === 'Converted' && !lead.customerId) {
+    try {
+      const customer = await upsertCustomerFromLead(
+        lead.toObject(),
+        currentUser
+      );
+      if (customer) {
+        lead.customerId = customer._id;
+        await lead.save();
+      }
+    } catch (customerErr) {
+      // Non-fatal: log the error but don't fail the status update
+      console.error('[leadService] Failed to auto-create customer on conversion:', customerErr.message);
+    }
+  }
 
   await LeadActivity.create({
     leadId: lead._id,

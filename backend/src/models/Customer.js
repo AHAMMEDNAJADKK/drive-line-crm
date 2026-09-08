@@ -27,10 +27,14 @@ const customerSchema = new mongoose.Schema(
     city: { type: String, trim: true, default: '' },
     country: { type: String, trim: true, default: '' },
     customerType: { type: String, enum: CUSTOMER_TYPES, default: 'Other' },
+    source: { type: String, trim: true, default: '' },
+    leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead', default: null },
+    convertedFromLead: { type: Boolean, default: false, index: true },
     notes: { type: String, trim: true, default: '' },
     status: { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
   },
+
   { timestamps: true }
 );
 
@@ -50,6 +54,7 @@ customerSchema.index({ shopName: 1 });
 customerSchema.index({ companyName: 1 });
 customerSchema.index({ trnNumber: 1 });
 customerSchema.index({ createdAt: -1 });
+customerSchema.index({ leadId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Customer', customerSchema);
 module.exports.CUSTOMER_TYPES = CUSTOMER_TYPES;

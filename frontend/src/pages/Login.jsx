@@ -4,11 +4,9 @@ import {
   Car,
   Eye,
   EyeOff,
-  Loader2,
-  ShieldCheck,
-  UserCheck,
-  Briefcase
+  Loader2
 } from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -52,11 +50,6 @@ export default function Login() {
     }
   };
 
-  const fillCredentials = (email, pwd) => {
-    setIdentifier(email);
-    setPassword(pwd);
-    setError('');
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors duration-200">
@@ -176,60 +169,8 @@ export default function Login() {
               Register Admin
             </Link>
           </div>
-
-          {/* Demo Accounts */}
-          <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5">
-              Quick Fill Demo Accounts:
-            </p>
-
-            <div className="grid grid-cols-3 gap-2">
-
-              <button
-                type="button"
-                onClick={() =>
-                  fillCredentials(
-                    'admin@driveline.com',
-                    'Admin@123'
-                  )
-                }
-                className="flex flex-col items-center p-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 text-purple-700 dark:text-purple-300 text-xs font-semibold transition-colors"
-              >
-                <ShieldCheck className="w-4 h-4 mb-1" />
-                Admin
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  fillCredentials(
-                    'hr@driveline.com',
-                    'Hr@123456'
-                  )
-                }
-                className="flex flex-col items-center p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors"
-              >
-                <Briefcase className="w-4 h-4 mb-1" />
-                HR
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  fillCredentials(
-                    'rahul@driveline.com',
-                    'Employee@123'
-                  )
-                }
-                className="flex flex-col items-center p-2 rounded-xl bg-gray-100 dark:bg-gray-700/50 hover:bg-gray-200 text-gray-700 dark:text-gray-300 text-xs font-semibold transition-colors"
-              >
-                <UserCheck className="w-4 h-4 mb-1" />
-                Employee
-              </button>
-
-            </div>
-          </div>
         </div>
+
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-5">
           Drive Line CRM · Automobile Parts Division

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EMPLOYEE_ROLES } from '../../utils/constants';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
+
 
 const FIELD_CLASS =
   'block w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors placeholder-gray-400 dark:placeholder-gray-500';
@@ -35,7 +36,9 @@ export default function EmployeeForm({
     garageShop: initialData.garageShop || ''
   });
 
+  const [selectedSpec, setSelectedSpec] = useState('');
   const [errors, setErrors] = useState({});
+
 
   const set = (field) => (e) => {
     setForm((prev) => ({
@@ -342,16 +345,61 @@ export default function EmployeeForm({
 
           <div>
             <label className={LABEL_CLASS}>Vehicle Specialization</label>
-            <select value={form.vehicleSpecialization} onChange={set('vehicleSpecialization')} className={FIELD_CLASS}>
-              <option value="">Not specified</option>
-              <option value="German">German</option>
-              <option value="Korean">Korean</option>
-              <option value="Japanese">Japanese</option>
-              <option value="Other">Other</option>
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={selectedSpec}
+                onChange={(e) => setSelectedSpec(e.target.value)}
+                className={FIELD_CLASS}
+              >
+                <option value="">Select specialization</option>
+                <option value="German">German</option>
+                <option value="Korean">Korean</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Other">Other</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedSpec) {
+                    setForm((prev) => ({
+                      ...prev,
+                      vehicleSpecialization: selectedSpec
+                    }));
+                    setSelectedSpec('');
+                  }
+                }}
+                disabled={!selectedSpec}
+                className="inline-flex items-center justify-center p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors shrink-0"
+                title="Add Specialization"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
+            {form.vehicleSpecialization && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {form.vehicleSpecialization}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        vehicleSpecialization: ''
+                      }))
+                    }
+                    className="text-indigo-500 hover:text-red-500 dark:text-indigo-400 dark:hover:text-red-400 transition-colors"
+                    title="Remove specialization"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
 
       {/* Password */}
       {!isEdit && (

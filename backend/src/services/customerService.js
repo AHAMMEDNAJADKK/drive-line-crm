@@ -147,6 +147,9 @@ const createCustomer = async (data, user) => {
     city: data.city ? String(data.city).trim() : '',
     country: data.country ? String(data.country).trim() : '',
     customerType: data.customerType || 'Other',
+    source: data.source ? String(data.source).trim() : '',
+    leadId: data.leadId || null,
+    convertedFromLead: Boolean(data.convertedFromLead),
     notes: data.notes ? String(data.notes).trim() : '',
     status: data.status || 'active',
     createdBy: user._id
@@ -204,7 +207,27 @@ const upsertCustomerFromLead = async (leadData, user) => {
   if (!phone) return null;
 
   const found = await findCustomerByPhone(phone);
-  if (found) return found;
+  if (found) {
+    if (leadData._id && !found.leadId) {
+      await Customer.updateOne(
+        { _id: found._id },
+        {
+          $set: {
+            leadId: leadData._id,
+            convertedFromLead: true,
+            source: 'Converted Lead'
+          }
+        }
+      );
+      return {
+        ...found,
+        leadId: leadData._id,
+        convertedFromLead: true,
+        source: 'Converted Lead'
+      };
+    }
+    return found;
+  }
 
   if (!leadData.customerName && !leadData.name) return null;
 
@@ -222,6 +245,9 @@ const upsertCustomerFromLead = async (leadData, user) => {
       city: leadData.city,
       country: leadData.country,
       customerType: leadData.customerType,
+      source: 'Converted Lead',
+      leadId: leadData._id,
+      convertedFromLead: true,
       notes: leadData.remarks
     }, user);
     return created;
