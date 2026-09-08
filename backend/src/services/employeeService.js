@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const Lead = require('../models/Lead');
+const VehicleSpecialization = require('../models/VehicleSpecialization');
+
 const { assertObjectId } = require('../utils/ids');
 const { STAFF_ROLES } = require('../utils/roles');
 const {
@@ -15,10 +17,100 @@ const normalizeString = (value) => {
   return String(value).trim();
 };
 
-const normalizeEmail = (value) => normalizeString(value).toLowerCase();
+const normalizeEmail = (value) =>
+  normalizeString(value).toLowerCase();
 
 const normalizeEmployeeId = (value) =>
   normalizeString(value).toUpperCase();
+
+/**
+ * Get all vehicle specializations.
+ *
+ * The default specializations are automatically created if they
+ * do not already exist in MongoDB.
+ */
+const getVehicleSpecializations = async () => {
+  const defaultSpecializations = [
+    'German',
+    'Korean',
+    'Japanese',
+    'Other'
+  ];
+
+  await Promise.all(
+    defaultSpecializations.map(async (name) => {
+      await VehicleSpecialization.updateOne(
+        {
+          name: {
+            $regex: `^${name.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              '\\$&'
+            )}$`,
+            $options: 'i'
+          }
+        },
+        {
+          $setOnInsert: {
+            name
+          }
+        },
+        {
+          upsert: true
+        }
+      );
+    })
+  );
+
+  return VehicleSpecialization.find({})
+    .sort({ name: 1 })
+    .select('_id name')
+    .lean();
+};
+
+/**
+ * Create a new vehicle specialization.
+ *
+ * Example:
+ *   Japan Car
+ *   BMW
+ *   Toyota
+ */
+const createVehicleSpecialization = async (name) => {
+  const cleanName = normalizeString(name);
+
+  if (!cleanName) {
+    throw new Error(
+      'Vehicle specialization name is required'
+    );
+  }
+
+  // Prevent duplicate names regardless of letter casing.
+  const escapedName = cleanName.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    '\\$&'
+  );
+
+  const existing =
+    await VehicleSpecialization.findOne({
+      name: {
+        $regex: `^${escapedName}$`,
+        $options: 'i'
+      }
+    });
+
+  if (existing) {
+    throw new Error(
+      'Vehicle specialization already exists'
+    );
+  }
+
+  const specialization =
+    await VehicleSpecialization.create({
+      name: cleanName
+    });
+
+  return specialization.toJSON();
+};
 
 const listEmployees = async ({
   page = 1,
@@ -54,7 +146,12 @@ const listEmployees = async ({
       { branch: { $regex: searchText, $options: 'i' } },
       { position: { $regex: searchText, $options: 'i' } },
       { garageShop: { $regex: searchText, $options: 'i' } },
-      { vehicleSpecialization: { $regex: searchText, $options: 'i' } }
+      {
+        vehicleSpecialization: {
+          $regex: searchText,
+          $options: 'i'
+        }
+      }
     ];
   }
 
@@ -122,7 +219,8 @@ const listEmployees = async ({
     };
   });
 
-  const totalPages = Math.ceil(total / currentLimit) || 1;
+  const totalPages =
+    Math.ceil(total / currentLimit) || 1;
 
   return {
     employees: enrichedUsers,
@@ -177,7 +275,8 @@ const createEmployee = async ({
 }) => {
   const cleanName = normalizeString(name);
   const cleanEmail = normalizeEmail(email);
-  const cleanEmployeeId = normalizeEmployeeId(employeeId);
+  const cleanEmployeeId =
+    normalizeEmployeeId(employeeId);
 
   if (!cleanName) {
     throw new Error('Name is required');
@@ -238,9 +337,14 @@ const createEmployee = async ({
     employeeId: cleanEmployeeId,
     idDetails: normalizeString(idDetails),
     passportNumber: normalizeString(passportNumber),
-    passportExpireDate: parseOptionalDate(passportExpireDate) || null,
+    passportExpireDate:
+      parseOptionalDate(passportExpireDate) || null,
+
     vehicleSpecialization:
-      normalizeVehicleSpecialization(vehicleSpecialization) || '',
+      normalizeVehicleSpecialization(
+        vehicleSpecialization
+      ) || '',
+
     branch: normalizeString(branch),
     position: normalizeString(position),
     garageShop: normalizeString(garageShop),
@@ -384,7 +488,9 @@ const updateEmployee = async (
 
   if (vehicleSpecialization !== undefined) {
     user.vehicleSpecialization =
-      normalizeVehicleSpecialization(vehicleSpecialization) || '';
+      normalizeVehicleSpecialization(
+        vehicleSpecialization
+      ) || '';
   }
 
   if (branch !== undefined) {
@@ -405,7 +511,10 @@ const updateEmployee = async (
   return user.toJSON();
 };
 
-const toggleEmployeeStatus = async (id, status) => {
+const toggleEmployeeStatus = async (
+  id,
+  status
+) => {
   assertObjectId(id, 'staff id');
 
   if (!VALID_STATUSES.includes(status)) {
@@ -459,7 +568,9 @@ const getActiveEmployeesList = async () => {
   return User.find({
     status: 'active'
   })
-    .select('_id name email employeeId role vehicleSpecialization')
+    .select(
+      '_id name email employeeId role vehicleSpecialization'
+    )
     .sort({ name: 1 })
     .lean();
 };
@@ -471,5 +582,7 @@ module.exports = {
   updateEmployee,
   toggleEmployeeStatus,
   resetEmployeePassword,
-  getActiveEmployeesList
+  getActiveEmployeesList,
+  getVehicleSpecializations,
+  createVehicleSpecialization
 };

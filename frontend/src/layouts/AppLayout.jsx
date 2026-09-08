@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import QuickLeadModal from '../components/leads/QuickLeadModal';
+import NotificationBell from '../components/notifications/NotificationBell';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
@@ -262,6 +263,9 @@ export default function AppLayout() {
                 Quick Lead
               </button>}
 
+              {/* HR-only Passport Notification Bell */}
+              <NotificationBell />
+
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -275,6 +279,7 @@ export default function AppLayout() {
                   <Moon className="h-5 w-5" />
                 )}
               </button>
+
 
               {/* User avatar */}
               <NavLink

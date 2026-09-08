@@ -1,5 +1,7 @@
 const LeadFollowup = require('../models/LeadFollowup');
 const Lead = require('../models/Lead');
+const LeadActivity = require('../models/LeadActivity');
+const { upsertCustomerFromLead } = require('./customerService');
 const { normalizeLeadStatus } = require('../utils/leadStatus');
 
 /**
@@ -51,7 +53,23 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
   }
   await lead.save();
 
-  // Log activity
+  // Link the converted lead to one customer, preserving idempotency.
+  if (statusChangedTo && normalizeLeadStatus(statusChangedTo) === 'Converted' && !lead.customerId) {
+    try {
+      const customer = await upsertCustomerFromLead(
+        lead.toObject(),
+        currentUser
+      );
+      if (customer) {
+        lead.customerId = customer._id;
+        await lead.save();
+      }
+    } catch (customerErr) {
+      console.error('[followupService] Failed to auto-create customer on conversion:', customerErr.message);
+    }
+  }
+
+
   await LeadActivity.create({
     leadId,
     action: 'Follow-up Added',

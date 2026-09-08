@@ -88,9 +88,13 @@ const supplierSchema = new mongoose.Schema(
       default: 'Other'
     },
 
+    // Vehicle specialization is intentionally a normal string.
+    // Custom specializations such as "Japan Car" are supported.
+    // The reusable specialization list is managed separately
+    // through the VehicleSpecialization collection.
     vehicleSpecialization: {
       type: String,
-      enum: ['', 'German', 'Korean', 'Japanese', 'Other'],
+      trim: true,
       default: '',
       index: true
     },
@@ -123,13 +127,19 @@ const supplierSchema = new mongoose.Schema(
 // ============================================================
 // NORMALIZE PHONE NUMBERS
 // ============================================================
+
 supplierSchema.pre('save', function (next) {
   if (this.isModified('phone') && this.phone) {
     this.phone = normalizePhoneNumber(this.phone);
   }
 
-  if (this.isModified('alternatePhone') && this.alternatePhone) {
-    this.alternatePhone = normalizePhoneNumber(this.alternatePhone);
+  if (
+    this.isModified('alternatePhone') &&
+    this.alternatePhone
+  ) {
+    this.alternatePhone = normalizePhoneNumber(
+      this.alternatePhone
+    );
   }
 
   next();
@@ -138,6 +148,7 @@ supplierSchema.pre('save', function (next) {
 // ============================================================
 // INDEXES
 // ============================================================
+
 supplierSchema.index({ name: 1 });
 supplierSchema.index({ companyName: 1 });
 supplierSchema.index({ trnNumber: 1 });

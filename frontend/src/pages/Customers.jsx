@@ -85,6 +85,9 @@ const getCustomerType = (customer) =>
 
 const getCustomerStatus = (customer) => customer?.status || "active";
 
+const isConvertedLead = (customer) =>
+  Boolean(customer?.convertedFromLead || customer?.leadId || customer?.source === "Converted Lead");
+
 const getInitialForm = (customer = null) => {
   if (!customer) {
     return { ...EMPTY_FORM };
@@ -327,7 +330,14 @@ export default function Customers() {
             </div>
           </div>
 
-          {renderStatus(getCustomerStatus(customer))}
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {isConvertedLead(customer) && (
+              <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                Converted Lead
+              </span>
+            )}
+            {renderStatus(getCustomerStatus(customer))}
+          </div>
         </div>
 
         <div className="mt-4 space-y-2.5">
@@ -639,7 +649,14 @@ export default function Customers() {
                         </td>
 
                         <td className="px-5 py-4">
-                          {renderStatus(getCustomerStatus(customer))}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {isConvertedLead(customer) && (
+                              <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                Converted Lead
+                              </span>
+                            )}
+                            {renderStatus(getCustomerStatus(customer))}
+                          </div>
                         </td>
 
                         <td className="px-5 py-4">

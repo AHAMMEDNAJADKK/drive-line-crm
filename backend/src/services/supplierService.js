@@ -1,4 +1,5 @@
 const Supplier = require('../models/Supplier');
+const VehicleSpecialization = require('../models/VehicleSpecialization');
 
 const {
   normalizePhoneNumber,
@@ -7,10 +8,12 @@ const {
 } = require('../utils/phoneUtils');
 
 const { assertObjectId } = require('../utils/ids');
+
 const {
   VEHICLE_SPECIALIZATIONS,
   normalizeVehicleSpecialization
 } = require('../utils/vehicleSpecializations');
+
 const { isEmployee } = require('../utils/roles');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,20 +82,159 @@ const validateStatus = (status) => {
 };
 
 const validateVehicleSpecialization = (value) => {
-  if (value !== undefined && value !== '' && !VEHICLE_SPECIALIZATIONS.includes(value)) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
+    return;
+  }
+
+  const normalized = normalizeVehicleSpecialization(value);
+
+  if (!normalized) {
     throw new Error('Invalid vehicle specialization');
   }
 };
 
 const applyEmployeeSupplierScope = (query, user) => {
-  if (!isEmployee(user) || !user.vehicleSpecialization) return;
+  if (!isEmployee(user) || !user.vehicleSpecialization) {
+    return;
+  }
 
   query.$or = [
-    { vehicleSpecialization: user.vehicleSpecialization },
-    { vehicleSpecialization: '' },
-    { vehicleSpecialization: null },
-    { vehicleSpecialization: { $exists: false } }
+    {
+      vehicleSpecialization: user.vehicleSpecialization
+    },
+    {
+      vehicleSpecialization: ''
+    },
+    {
+      vehicleSpecialization: null
+    },
+    {
+      vehicleSpecialization: {
+        $exists: false
+      }
+    }
   ];
+};
+
+// ============================================================
+// VEHICLE SPECIALIZATIONS
+// ============================================================
+
+/**
+ * Make sure the original/default specializations exist
+ * in MongoDB.
+ *
+ * Existing default values:
+ * - German
+ * - Korean
+ * - Japanese
+ * - Other
+ */
+const ensureDefaultVehicleSpecializations = async () => {
+  await Promise.all(
+    VEHICLE_SPECIALIZATIONS.map((name) =>
+      VehicleSpecialization.updateOne(
+        { name },
+        {
+          $setOnInsert: {
+            name
+          }
+        },
+        {
+          upsert: true
+        }
+      )
+    )
+  );
+};
+
+/**
+ * Get all vehicle specializations.
+ *
+ * Returns:
+ * - Default specializations
+ * - Custom specializations stored in MongoDB
+ */
+const listVehicleSpecializations = async () => {
+  await ensureDefaultVehicleSpecializations();
+
+  const specializations =
+    await VehicleSpecialization.find({})
+      .sort({ name: 1 })
+      .lean();
+
+  return specializations;
+};
+
+/**
+ * Add a new vehicle specialization.
+ *
+ * Example:
+ * "Japan Car"
+ */
+const createVehicleSpecialization = async (name) => {
+  const normalizedName =
+    normalizeOptionalString(name);
+
+  if (!normalizedName) {
+    throw new Error(
+      'Vehicle specialization name is required'
+    );
+  }
+
+  if (normalizedName.length > 100) {
+    throw new Error(
+      'Vehicle specialization name cannot exceed 100 characters'
+    );
+  }
+
+  // Escape special characters before using the value
+  // inside a regular expression.
+  const escapedName = normalizedName.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    '\\$&'
+  );
+
+  // Case-insensitive duplicate check.
+  const existing =
+    await VehicleSpecialization.findOne({
+      name: {
+        $regex: `^${escapedName}$`,
+        $options: 'i'
+      }
+    }).lean();
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    const specialization =
+      await VehicleSpecialization.create({
+        name: normalizedName
+      });
+
+    return specialization.toJSON();
+  } catch (error) {
+    // Handles a race condition against the
+    // unique MongoDB index.
+    if (error?.code === 11000) {
+      const existing =
+        await VehicleSpecialization.findOne({
+          name: normalizedName
+        }).lean();
+
+      if (existing) {
+        return existing;
+      }
+    }
+
+    throw error;
+  }
 };
 
 // ============================================================
@@ -104,27 +246,36 @@ const findSupplierByPhone = async (phone) => {
     return null;
   }
 
-  const normalizedPhone = normalizePhoneNumber(phone);
+  const normalizedPhone =
+    normalizePhoneNumber(phone);
 
   if (!normalizedPhone) {
     return null;
   }
 
-  const canonicalPhoneKey = getCanonicalPhoneKey(normalizedPhone);
+  const canonicalPhoneKey =
+    getCanonicalPhoneKey(normalizedPhone);
 
-  const suppliers = await Supplier.find({
-    $or: [
-      { phone: normalizedPhone },
-      { phone: canonicalPhoneKey }
-    ]
-  })
-    .limit(10)
-    .lean();
+  const suppliers =
+    await Supplier.find({
+      $or: [
+        {
+          phone: normalizedPhone
+        },
+        {
+          phone: canonicalPhoneKey
+        }
+      ]
+    })
+      .limit(10)
+      .lean();
 
   return (
     suppliers.find(
       (supplier) =>
-        normalizePhoneNumber(supplier.phone) === normalizedPhone
+        normalizePhoneNumber(
+          supplier.phone
+        ) === normalizedPhone
     ) || null
   );
 };
@@ -133,7 +284,10 @@ const findSupplierByPhone = async (phone) => {
 // LIST SUPPLIERS
 // ============================================================
 
-const listSuppliers = async (queryParams = {}, user) => {
+const listSuppliers = async (
+  queryParams = {},
+  user
+) => {
   const {
     page: requestedPage = 1,
     limit: requestedLimit = 25,
@@ -143,17 +297,21 @@ const listSuppliers = async (queryParams = {}, user) => {
     country
   } = queryParams;
 
-  const { page, limit } = validatePagination(
-    requestedPage,
-    requestedLimit
-  );
+  const { page, limit } =
+    validatePagination(
+      requestedPage,
+      requestedLimit
+    );
 
   validateStatus(status);
   validateSupplierType(supplierType);
 
   const query = {};
 
-  applyEmployeeSupplierScope(query, user);
+  applyEmployeeSupplierScope(
+    query,
+    user
+  );
 
   if (status) {
     query.status = status;
@@ -163,31 +321,99 @@ const listSuppliers = async (queryParams = {}, user) => {
     query.supplierType = supplierType;
   }
 
-  if (country && String(country).trim()) {
+  if (
+    country &&
+    String(country).trim()
+  ) {
     query.country = {
       $regex: String(country).trim(),
       $options: 'i'
     };
   }
 
-  if (search && String(search).trim()) {
+  if (
+    search &&
+    String(search).trim()
+  ) {
     const s = String(search).trim();
 
-    query.$or = [
-      { name: { $regex: s, $options: 'i' } },
-      { contactPerson: { $regex: s, $options: 'i' } },
-      { phone: { $regex: s, $options: 'i' } },
-      { alternatePhone: { $regex: s, $options: 'i' } },
-      { companyName: { $regex: s, $options: 'i' } },
-      { shopWarehouseName: { $regex: s, $options: 'i' } },
-      { trnNumber: { $regex: s, $options: 'i' } },
-      { email: { $regex: s, $options: 'i' } },
-      { city: { $regex: s, $options: 'i' } },
-      { vehicleSpecialization: { $regex: s, $options: 'i' } }
+    const searchConditions = [
+      {
+        name: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        contactPerson: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        phone: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        alternatePhone: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        companyName: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        shopWarehouseName: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        trnNumber: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        email: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        city: {
+          $regex: s,
+          $options: 'i'
+        }
+      },
+      {
+        vehicleSpecialization: {
+          $regex: s,
+          $options: 'i'
+        }
+      }
     ];
 
+    /**
+     * Preserve employee specialization filtering
+     * while also applying the search conditions.
+     */
     if (query.$or) {
-      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+      query.$and = [
+        {
+          $or: query.$or
+        },
+        {
+          $or: searchConditions
+        }
+      ];
+
       delete query.$or;
     } else {
       query.$or = searchConditions;
@@ -196,17 +422,21 @@ const listSuppliers = async (queryParams = {}, user) => {
 
   const skip = (page - 1) * limit;
 
-  const [suppliers, total] = await Promise.all([
-    Supplier.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+  const [suppliers, total] =
+    await Promise.all([
+      Supplier.find(query)
+        .sort({
+          createdAt: -1
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
 
-    Supplier.countDocuments(query)
-  ]);
+      Supplier.countDocuments(query)
+    ]);
 
-  const totalPages = Math.ceil(total / limit) || 1;
+  const totalPages =
+    Math.ceil(total / limit) || 1;
 
   return {
     data: suppliers,
@@ -214,7 +444,6 @@ const listSuppliers = async (queryParams = {}, user) => {
     total,
     page,
     pages: totalPages,
-
     pagination: {
       page,
       limit,
@@ -228,23 +457,37 @@ const listSuppliers = async (queryParams = {}, user) => {
 // GET SUPPLIER BY ID
 // ============================================================
 
-const getSupplierById = async (id, user) => {
-  assertObjectId(id, 'supplier id');
+const getSupplierById = async (
+  id,
+  user
+) => {
+  assertObjectId(
+    id,
+    'supplier id'
+  );
 
-  const supplier = await Supplier.findById(id).lean();
+  const supplier =
+    await Supplier.findById(id).lean();
 
   if (!supplier) {
-    throw new Error('Supplier not found');
+    throw new Error(
+      'Supplier not found'
+    );
   }
 
   if (
     isEmployee(user) &&
     user.vehicleSpecialization &&
     supplier.vehicleSpecialization &&
-    supplier.vehicleSpecialization !== user.vehicleSpecialization
+    supplier.vehicleSpecialization !==
+      user.vehicleSpecialization
   ) {
-    const error = new Error('Unauthorized to view this supplier');
+    const error = new Error(
+      'Unauthorized to view this supplier'
+    );
+
     error.statusCode = 403;
+
     throw error;
   }
 
@@ -255,47 +498,87 @@ const getSupplierById = async (id, user) => {
 // CREATE SUPPLIER
 // ============================================================
 
-const createSupplier = async (data, user) => {
+const createSupplier = async (
+  data,
+  user
+) => {
   if (!user || !user._id) {
-    throw new Error('Authenticated user is required');
+    throw new Error(
+      'Authenticated user is required'
+    );
   }
 
-  const name = normalizeOptionalString(data.name);
-  const phone = normalizeOptionalString(data.phone);
-  const alternatePhone = normalizeOptionalString(
-    data.alternatePhone
-  );
-  const email = normalizeOptionalString(data.email).toLowerCase();
+  const name =
+    normalizeOptionalString(data.name);
+
+  const phone =
+    normalizeOptionalString(data.phone);
+
+  const alternatePhone =
+    normalizeOptionalString(
+      data.alternatePhone
+    );
+
+  const email =
+    normalizeOptionalString(
+      data.email
+    ).toLowerCase();
 
   if (!name) {
-    throw new Error('Supplier name is required');
+    throw new Error(
+      'Supplier name is required'
+    );
   }
 
   if (!phone) {
-    throw new Error('Phone number is required');
+    throw new Error(
+      'Phone number is required'
+    );
   }
 
   if (!isValidPhoneNumber(phone)) {
-    throw new Error('Invalid phone number');
+    throw new Error(
+      'Invalid phone number'
+    );
   }
 
   if (
     alternatePhone &&
-    !isValidPhoneNumber(alternatePhone)
+    !isValidPhoneNumber(
+      alternatePhone
+    )
   ) {
-    throw new Error('Invalid alternate phone');
+    throw new Error(
+      'Invalid alternate phone'
+    );
   }
 
-  if (email && !EMAIL_RE.test(email)) {
-    throw new Error('Invalid email address');
+  if (
+    email &&
+    !EMAIL_RE.test(email)
+  ) {
+    throw new Error(
+      'Invalid email address'
+    );
   }
 
-  validateSupplierType(data.supplierType);
-  validateStatus(data.status);
-  validateVehicleSpecialization(data.vehicleSpecialization);
+  validateSupplierType(
+    data.supplierType
+  );
 
-  // Check duplicate phone
-  const existingSupplier = await findSupplierByPhone(phone);
+  validateStatus(
+    data.status
+  );
+
+  validateVehicleSpecialization(
+    data.vehicleSpecialization
+  );
+
+  // Check duplicate phone.
+  const existingSupplier =
+    await findSupplierByPhone(
+      phone
+    );
 
   if (existingSupplier) {
     const error = new Error(
@@ -303,63 +586,78 @@ const createSupplier = async (data, user) => {
     );
 
     error.isDuplicate = true;
-    error.existingSupplier = existingSupplier;
+
+    error.existingSupplier =
+      existingSupplier;
 
     throw error;
   }
 
-  const supplier = await Supplier.create({
-    name,
+  const supplier =
+    await Supplier.create({
+      name,
 
-    contactPerson: normalizeOptionalString(
-      data.contactPerson
-    ),
+      contactPerson:
+        normalizeOptionalString(
+          data.contactPerson
+        ),
 
-    phone,
+      phone,
 
-    alternatePhone,
+      alternatePhone,
 
-    email,
+      email,
 
-    companyName: normalizeOptionalString(
-      data.companyName
-    ),
+      companyName:
+        normalizeOptionalString(
+          data.companyName
+        ),
 
-    shopWarehouseName: normalizeOptionalString(
-      data.shopWarehouseName
-    ),
+      shopWarehouseName:
+        normalizeOptionalString(
+          data.shopWarehouseName
+        ),
 
-    trnNumber: normalizeOptionalString(
-      data.trnNumber
-    ),
+      trnNumber:
+        normalizeOptionalString(
+          data.trnNumber
+        ),
 
-    country: normalizeOptionalString(
-      data.country
-    ),
+      country:
+        normalizeOptionalString(
+          data.country
+        ),
 
-    city: normalizeOptionalString(
-      data.city
-    ),
+      city:
+        normalizeOptionalString(
+          data.city
+        ),
 
-    address: normalizeOptionalString(
-      data.address
-    ),
+      address:
+        normalizeOptionalString(
+          data.address
+        ),
 
-    supplierType:
-      data.supplierType || 'Other',
+      supplierType:
+        data.supplierType ||
+        'Other',
 
-    status:
-      data.status || 'active',
+      status:
+        data.status ||
+        'active',
 
-    vehicleSpecialization:
-      normalizeVehicleSpecialization(data.vehicleSpecialization) || '',
+      vehicleSpecialization:
+        normalizeVehicleSpecialization(
+          data.vehicleSpecialization
+        ) || '',
 
-    notes: normalizeOptionalString(
-      data.notes
-    ),
+      notes:
+        normalizeOptionalString(
+          data.notes
+        ),
 
-    createdBy: user._id
-  });
+      createdBy: user._id
+    });
 
   return supplier.toJSON();
 };
@@ -368,13 +666,22 @@ const createSupplier = async (data, user) => {
 // UPDATE SUPPLIER
 // ============================================================
 
-const updateSupplier = async (id, data) => {
-  assertObjectId(id, 'supplier id');
+const updateSupplier = async (
+  id,
+  data
+) => {
+  assertObjectId(
+    id,
+    'supplier id'
+  );
 
-  const supplier = await Supplier.findById(id);
+  const supplier =
+    await Supplier.findById(id);
 
   if (!supplier) {
-    throw new Error('Supplier not found');
+    throw new Error(
+      'Supplier not found'
+    );
   }
 
   // ----------------------------------------------------------
@@ -382,21 +689,30 @@ const updateSupplier = async (id, data) => {
   // ----------------------------------------------------------
 
   if (data.phone !== undefined) {
-    const phone = normalizeOptionalString(data.phone);
+    const phone =
+      normalizeOptionalString(
+        data.phone
+      );
 
     if (!phone) {
-      throw new Error('Phone number is required');
+      throw new Error(
+        'Phone number is required'
+      );
     }
 
     if (!isValidPhoneNumber(phone)) {
-      throw new Error('Invalid phone number');
+      throw new Error(
+        'Invalid phone number'
+      );
     }
 
     const normalizedPhone =
       normalizePhoneNumber(phone);
 
     const existingSupplier =
-      await findSupplierByPhone(normalizedPhone);
+      await findSupplierByPhone(
+        normalizedPhone
+      );
 
     if (
       existingSupplier &&
@@ -407,30 +723,42 @@ const updateSupplier = async (id, data) => {
       );
 
       error.isDuplicate = true;
-      error.existingSupplier = existingSupplier;
+
+      error.existingSupplier =
+        existingSupplier;
 
       throw error;
     }
 
-    supplier.phone = normalizedPhone;
+    supplier.phone =
+      normalizedPhone;
   }
 
   // ----------------------------------------------------------
   // ALTERNATE PHONE
   // ----------------------------------------------------------
 
-  if (data.alternatePhone !== undefined) {
+  if (
+    data.alternatePhone !== undefined
+  ) {
     const alternatePhone =
-      normalizeOptionalString(data.alternatePhone);
+      normalizeOptionalString(
+        data.alternatePhone
+      );
 
     if (
       alternatePhone &&
-      !isValidPhoneNumber(alternatePhone)
+      !isValidPhoneNumber(
+        alternatePhone
+      )
     ) {
-      throw new Error('Invalid alternate phone');
+      throw new Error(
+        'Invalid alternate phone'
+      );
     }
 
-    supplier.alternatePhone = alternatePhone;
+    supplier.alternatePhone =
+      alternatePhone;
   }
 
   // ----------------------------------------------------------
@@ -439,10 +767,17 @@ const updateSupplier = async (id, data) => {
 
   if (data.email !== undefined) {
     const email =
-      normalizeOptionalString(data.email).toLowerCase();
+      normalizeOptionalString(
+        data.email
+      ).toLowerCase();
 
-    if (email && !EMAIL_RE.test(email)) {
-      throw new Error('Invalid email address');
+    if (
+      email &&
+      !EMAIL_RE.test(email)
+    ) {
+      throw new Error(
+        'Invalid email address'
+      );
     }
 
     supplier.email = email;
@@ -452,24 +787,40 @@ const updateSupplier = async (id, data) => {
   // VALIDATE ENUM FIELDS
   // ----------------------------------------------------------
 
-  if (data.supplierType !== undefined) {
-    validateSupplierType(data.supplierType);
+  if (
+    data.supplierType !== undefined
+  ) {
+    validateSupplierType(
+      data.supplierType
+    );
 
     supplier.supplierType =
-      data.supplierType || 'Other';
+      data.supplierType ||
+      'Other';
   }
 
   if (data.status !== undefined) {
-    validateStatus(data.status);
+    validateStatus(
+      data.status
+    );
 
     supplier.status =
-      data.status || 'active';
+      data.status ||
+      'active';
   }
 
-  if (data.vehicleSpecialization !== undefined) {
-    validateVehicleSpecialization(data.vehicleSpecialization);
+  if (
+    data.vehicleSpecialization !==
+    undefined
+  ) {
+    validateVehicleSpecialization(
+      data.vehicleSpecialization
+    );
+
     supplier.vehicleSpecialization =
-      normalizeVehicleSpecialization(data.vehicleSpecialization) || '';
+      normalizeVehicleSpecialization(
+        data.vehicleSpecialization
+      ) || '';
   }
 
   // ----------------------------------------------------------
@@ -488,16 +839,27 @@ const updateSupplier = async (id, data) => {
     'notes'
   ];
 
-  stringFields.forEach((field) => {
-    if (data[field] !== undefined) {
-      supplier[field] =
-        normalizeOptionalString(data[field]);
+  stringFields.forEach(
+    (field) => {
+      if (
+        data[field] !== undefined
+      ) {
+        supplier[field] =
+          normalizeOptionalString(
+            data[field]
+          );
+      }
     }
-  });
+  );
 
-  // Supplier name must never be empty
-  if (!supplier.name || !supplier.name.trim()) {
-    throw new Error('Supplier name is required');
+  // Supplier name must never be empty.
+  if (
+    !supplier.name ||
+    !supplier.name.trim()
+  ) {
+    throw new Error(
+      'Supplier name is required'
+    );
   }
 
   await supplier.save();
@@ -514,5 +876,9 @@ module.exports = {
   getSupplierById,
   createSupplier,
   updateSupplier,
-  findSupplierByPhone
+  findSupplierByPhone,
+
+  // Vehicle specialization APIs
+  listVehicleSpecializations,
+  createVehicleSpecialization
 };

@@ -170,7 +170,8 @@ const updateEmployee = async (req, res, next) => {
 
     return res.status(400).json({
       success: false,
-      message: err.message || 'Failed to update employee'
+      message:
+        err.message || 'Failed to update employee'
     });
   }
 };
@@ -280,6 +281,67 @@ const getActiveEmployeesList = async (
   }
 };
 
+/**
+ * Get vehicle specializations for Employee form.
+ */
+const getVehicleSpecializations = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const specializations =
+      await employeeService.getVehicleSpecializations();
+
+    return res.status(200).json({
+      success: true,
+      data: specializations
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * Create a new vehicle specialization.
+ */
+const createVehicleSpecialization = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const specialization =
+      await employeeService.createVehicleSpecialization(
+        req.body?.name
+      );
+
+    return res.status(201).json({
+      success: true,
+      message:
+        'Vehicle specialization added successfully',
+      data: specialization
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Vehicle specialization already exists'
+      });
+    }
+
+    if (err.message) {
+      return res.status(400).json({
+        success: false,
+        message: err.message
+      });
+    }
+
+    return next(err);
+  }
+};
+
 module.exports = {
   listEmployees,
   getEmployee,
@@ -287,5 +349,7 @@ module.exports = {
   updateEmployee,
   toggleStatus,
   resetPassword,
-  getActiveEmployeesList
+  getActiveEmployeesList,
+  getVehicleSpecializations,
+  createVehicleSpecialization
 };

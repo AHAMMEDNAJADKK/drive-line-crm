@@ -16,14 +16,39 @@ const ctrl = require('../controllers/supplierController');
 router.use(authenticate);
 
 // ============================================================
+// VEHICLE SPECIALIZATION ROUTES
+// IMPORTANT: These must be BEFORE /:id
+// ============================================================
+
+// Get all vehicle specializations
+router.get(
+  '/vehicle-specializations',
+  ctrl.getVehicleSpecializations
+);
+
+// Add a new vehicle specialization
+// Admin and HR only
+router.post(
+  '/vehicle-specializations',
+  authorize('admin', 'hr'),
+  ctrl.createVehicleSpecialization
+);
+
+// ============================================================
 // SUPPLIER ROUTES
 // ============================================================
 
 // List suppliers
-router.get('/', ctrl.listSuppliers);
+router.get(
+  '/',
+  ctrl.listSuppliers
+);
 
 // Get supplier by ID
-router.get('/:id', ctrl.getSupplier);
+router.get(
+  '/:id',
+  ctrl.getSupplier
+);
 
 // Create supplier
 // Admin and HR only

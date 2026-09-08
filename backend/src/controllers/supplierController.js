@@ -6,7 +6,10 @@ const supplierService = require('../services/supplierService');
 
 const listSuppliers = async (req, res, next) => {
   try {
-    const result = await supplierService.listSuppliers(req.query, req.user);
+    const result = await supplierService.listSuppliers(
+      req.query,
+      req.user
+    );
 
     return res.status(200).json({
       success: true,
@@ -23,10 +26,11 @@ const listSuppliers = async (req, res, next) => {
 
 const getSupplier = async (req, res) => {
   try {
-    const supplier = await supplierService.getSupplierById(
-      req.params.id,
-      req.user
-    );
+    const supplier =
+      await supplierService.getSupplierById(
+        req.params.id,
+        req.user
+      );
 
     return res.status(200).json({
       success: true,
@@ -46,7 +50,9 @@ const getSupplier = async (req, res) => {
       err.name === 'ValidationError' ||
       err.name === 'CastError'
     ) {
-      return res.status(err.statusCode || 400).json({
+      return res.status(
+        err.statusCode || 400
+      ).json({
         success: false,
         message: err.message
       });
@@ -54,7 +60,9 @@ const getSupplier = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: err.message || 'Failed to fetch supplier'
+      message:
+        err.message ||
+        'Failed to fetch supplier'
     });
   }
 };
@@ -65,14 +73,16 @@ const getSupplier = async (req, res) => {
 
 const createSupplier = async (req, res) => {
   try {
-    const supplier = await supplierService.createSupplier(
-      req.body,
-      req.user
-    );
+    const supplier =
+      await supplierService.createSupplier(
+        req.body,
+        req.user
+      );
 
     return res.status(201).json({
       success: true,
-      message: 'Supplier created successfully',
+      message:
+        'Supplier created successfully',
       data: supplier
     });
   } catch (err) {
@@ -82,7 +92,8 @@ const createSupplier = async (req, res) => {
         success: false,
         message: err.message,
         isDuplicate: true,
-        existingSupplier: err.existingSupplier || null
+        existingSupplier:
+          err.existingSupplier || null
       });
     }
 
@@ -98,7 +109,9 @@ const createSupplier = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: err.message || 'Failed to create supplier'
+      message:
+        err.message ||
+        'Failed to create supplier'
     });
   }
 };
@@ -109,14 +122,16 @@ const createSupplier = async (req, res) => {
 
 const updateSupplier = async (req, res) => {
   try {
-    const supplier = await supplierService.updateSupplier(
-      req.params.id,
-      req.body
-    );
+    const supplier =
+      await supplierService.updateSupplier(
+        req.params.id,
+        req.body
+      );
 
     return res.status(200).json({
       success: true,
-      message: 'Supplier updated successfully',
+      message:
+        'Supplier updated successfully',
       data: supplier
     });
   } catch (err) {
@@ -134,7 +149,8 @@ const updateSupplier = async (req, res) => {
         success: false,
         message: err.message,
         isDuplicate: true,
-        existingSupplier: err.existingSupplier || null
+        existingSupplier:
+          err.existingSupplier || null
       });
     }
 
@@ -152,7 +168,74 @@ const updateSupplier = async (req, res) => {
 
     return res.status(400).json({
       success: false,
-      message: err.message || 'Failed to update supplier'
+      message:
+        err.message ||
+        'Failed to update supplier'
+    });
+  }
+};
+
+// ============================================================
+// LIST VEHICLE SPECIALIZATIONS
+// ============================================================
+
+const getVehicleSpecializations = async (
+  req,
+  res
+) => {
+  try {
+    const specializations =
+      await supplierService.listVehicleSpecializations();
+
+    return res.status(200).json({
+      success: true,
+      data: specializations
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message:
+        err.message ||
+        'Failed to fetch vehicle specializations'
+    });
+  }
+};
+
+// ============================================================
+// CREATE VEHICLE SPECIALIZATION
+// ============================================================
+
+const createVehicleSpecialization = async (
+  req,
+  res
+) => {
+  try {
+    const specialization =
+      await supplierService.createVehicleSpecialization(
+        req.body?.name
+      );
+
+    return res.status(201).json({
+      success: true,
+      message:
+        'Vehicle specialization added successfully',
+      data: specialization
+    });
+  } catch (err) {
+    // Duplicate specialization
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Vehicle specialization already exists'
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message:
+        err.message ||
+        'Failed to add vehicle specialization'
     });
   }
 };
@@ -165,5 +248,7 @@ module.exports = {
   listSuppliers,
   getSupplier,
   createSupplier,
-  updateSupplier
+  updateSupplier,
+  getVehicleSpecializations,
+  createVehicleSpecialization
 };
