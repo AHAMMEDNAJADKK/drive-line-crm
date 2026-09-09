@@ -219,6 +219,11 @@ const Suppliers = () => {
                     : item?.name
                 )
                 .filter(Boolean)
+                .filter(
+                  (item) =>
+                    String(item).toLowerCase() !==
+                    'other'
+                )
             : [];
 
         setVehicleSpecializations(
@@ -1562,8 +1567,13 @@ const Suppliers = () => {
                           : 'Select specialization'}
                       </option>
 
-                      {vehicleSpecializations.map(
-                        (spec) => (
+                      {vehicleSpecializations
+                        .filter(
+                          (spec) =>
+                            String(spec).toLowerCase() !==
+                            'other'
+                        )
+                        .map((spec) => (
                           <option
                             key={
                               spec
@@ -1580,8 +1590,7 @@ const Suppliers = () => {
                               spec
                             }
                           </option>
-                        )
-                      )}
+                        ))}
                     </select>
 
                     {/* + Button */}

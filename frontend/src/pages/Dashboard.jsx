@@ -295,7 +295,7 @@ export default function Dashboard() {
           {/* Top Parts Demand */}
           {topPartsDemand.length > 0 && (
             <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Parts in Demand</h3>
+              <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Parts in Demand</h3>
               <div className="space-y-3">
                 {topPartsDemand.map((item, i) => (
                   <div key={i} className="flex items-center justify-between">
@@ -309,7 +309,7 @@ export default function Dashboard() {
 
               {topVehiclesDemand.length > 0 && (
                 <>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-5 mb-3">Top Vehicles</h3>
+                  <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mt-5 mb-3">Top Vehicles</h3>
                   <div className="space-y-3">
                     {topVehiclesDemand.map((item, i) => (
                       <div key={i} className="flex items-center justify-between">
