@@ -18,8 +18,7 @@ const LABEL_CLASS =
 const DEFAULT_VEHICLE_SPECIALIZATIONS = [
   'German',
   'Korean',
-  'Japanese',
-  'Other'
+  'Japanese'
 ];
 
 export default function EmployeeForm({
@@ -92,13 +91,17 @@ export default function EmployeeForm({
         const merged = [
           ...DEFAULT_VEHICLE_SPECIALIZATIONS,
           ...names
-        ].filter(
-          (name, index, array) =>
-            array.findIndex(
-              (item) =>
-                item.toLowerCase() === name.toLowerCase()
-            ) === index
-        );
+        ]
+          .filter(
+            (name, index, array) =>
+              array.findIndex(
+                (item) =>
+                  item.toLowerCase() === name.toLowerCase()
+              ) === index
+          )
+          .filter(
+            (name) => name.toLowerCase() !== 'other'
+          );
 
         setVehicleSpecializations(merged);
       } catch (err) {
@@ -601,16 +604,19 @@ export default function EmployeeForm({
                     Select specialization
                   </option>
 
-                  {vehicleSpecializations.map(
-                    (spec) => (
+                  {vehicleSpecializations
+                    .filter(
+                      (spec) =>
+                        spec.toLowerCase() !== 'other'
+                    )
+                    .map((spec) => (
                       <option
                         key={spec}
                         value={spec}
                       >
                         {spec}
                       </option>
-                    )
-                  )}
+                    ))}
                 </select>
 
                 {/* Add new specialization */}
