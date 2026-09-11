@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Car
+  Car,
+  CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -69,6 +70,7 @@ export default function AppLayout() {
     : [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/leads', icon: UserSquare2, label: 'Leads' },
+        { to: '/closed-leads', icon: CheckCircle2, label: 'Closed Leads' },
         ...(user?.role === 'admin' ? [{ to: '/employees', icon: Users, label: 'Employees' }] : []),
         { to: '/customers', icon: UserRound, label: 'Customers' },
         { to: '/suppliers', icon: Building2, label: 'Suppliers' }

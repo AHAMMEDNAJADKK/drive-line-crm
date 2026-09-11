@@ -275,6 +275,12 @@ const leadSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    closedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -302,18 +308,24 @@ leadSchema.pre('save', function (next) {
   }
 
   /*
-   * Keep convertedAt synchronized with status.
+   * Keep convertedAt and closedAt synchronized with status.
    */
   if (this.isModified('status')) {
-    if (
-      this.status === 'Converted' &&
-      !this.convertedAt
-    ) {
-      this.convertedAt = new Date();
-    } else if (
-      this.status !== 'Converted'
-    ) {
+    if (this.status === 'Converted') {
+      if (!this.convertedAt) {
+        this.convertedAt = new Date();
+      }
+      if (!this.closedAt) {
+        this.closedAt = new Date();
+      }
+    } else if (this.status === 'Lost') {
       this.convertedAt = null;
+      if (!this.closedAt) {
+        this.closedAt = new Date();
+      }
+    } else {
+      this.convertedAt = null;
+      this.closedAt = null;
     }
   }
 

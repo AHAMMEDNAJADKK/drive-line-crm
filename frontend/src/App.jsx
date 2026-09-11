@@ -15,6 +15,7 @@ import RegisterAdmin from './pages/RegisterAdmin';
 
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import ClosedLeads from './pages/ClosedLeads';
 import LeadDetail from './pages/LeadDetail';
 import Employees from './pages/Employees';
 import EmployeeDetail from './pages/EmployeeDetail';
@@ -79,6 +80,11 @@ function AppRoutes() {
           <Route
             path="/leads"
             element={<Leads />}
+          />
+
+          <Route
+            path="/closed-leads"
+            element={<ClosedLeads />}
           />
 
           <Route

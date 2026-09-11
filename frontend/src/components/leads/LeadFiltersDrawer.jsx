@@ -4,6 +4,8 @@ import { X, Filter } from 'lucide-react';
 import { getActiveEmployeesApi } from '../../services/employeeApi';
 import {
   LEAD_STATUSES,
+  CLOSED_LEAD_STATUSES,
+  ACTIVE_LEAD_STATUSES,
   LEAD_PRIORITIES,
   CUSTOMER_TYPES,
   LEAD_SOURCES,
@@ -42,7 +44,7 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-export default function LeadFiltersDrawer({ isOpen, onClose, filters = {}, onChange, onApply }) {
+export default function LeadFiltersDrawer({ isOpen, onClose, filters = {}, onChange, onApply, isClosed = false }) {
   const [draft, setDraft] = useState(filters);
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export default function LeadFiltersDrawer({ isOpen, onClose, filters = {}, onCha
             label="Status"
             value={draft.status}
             onChange={(v) => update('status', v)}
-            options={LEAD_STATUSES}
+            options={isClosed ? CLOSED_LEAD_STATUSES : LEAD_STATUSES}
           />
           <FilterSelect
             label="Priority"

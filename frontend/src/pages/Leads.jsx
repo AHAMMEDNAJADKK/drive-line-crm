@@ -37,7 +37,7 @@ import toast from 'react-hot-toast';
 
 const PAGE_LIMIT = 25;
 
-export default function Leads() {
+export default function Leads({ isClosed = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,6 +71,10 @@ export default function Leads() {
 
   const buildQuery = useCallback(() => {
     const q = {};
+
+    if (isClosed) {
+      q.scope = 'closed';
+    }
 
     if (searchParams.get('search')) {
       q.search = searchParams.get('search');
@@ -112,7 +116,7 @@ export default function Leads() {
     q.limit = PAGE_LIMIT;
 
     return q;
-  }, [searchParams]);
+  }, [searchParams, isClosed]);
 
   // =========================================================
   // LOAD LEADS
@@ -352,16 +356,16 @@ export default function Leads() {
 
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Leads
+            {isClosed ? 'Closed Leads' : 'Leads'}
           </h1>
 
           {!loading && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {pagination.total}{' '}
               {pagination.total === 1
-                ? 'lead'
-                : 'leads'}{' '}
-              total
+                ? isClosed ? 'closed lead' : 'lead'
+                : isClosed ? 'closed leads' : 'leads'}{' '}
+              total {isClosed ? '(Converted & Lost past 24h)' : ''}
             </p>
           )}
         </div>
@@ -369,24 +373,26 @@ export default function Leads() {
         <div className="flex flex-wrap items-center gap-2">
 
           {/* =================================================
-              NEW ADD LEAD BUTTON
+              NEW ADD LEAD BUTTON (Only for Active Leads)
           ================================================= */}
 
-          <button
-            type="button"
-            onClick={() =>
-              setAddLeadOpen(true)
-            }
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
-          >
-            <Plus className="w-4 h-4" />
+          {!isClosed && (
+            <button
+              type="button"
+              onClick={() =>
+                setAddLeadOpen(true)
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-500 shadow transition-colors"
+            >
+              <Plus className="w-4 h-4" />
 
-            <span>Add Lead</span>
-          </button>
+              <span>Add Lead</span>
+            </button>
+          )}
 
-          {/* IMPORT */}
+          {/* IMPORT (Only for Active Leads) */}
 
-          {user?.role !== 'employee' && (
+          {!isClosed && user?.role !== 'employee' && (
             <button
               type="button"
               onClick={() =>
@@ -446,6 +452,48 @@ export default function Leads() {
           )}
         </div>
       </div>
+
+      {/* =====================================================
+          QUICK STATUS TABS FOR CLOSED LEADS
+      ====================================================== */}
+
+      {isClosed && (
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl w-fit">
+          <button
+            type="button"
+            onClick={() => setParam('status', '')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              !searchParams.get('status')
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            All Closed
+          </button>
+          <button
+            type="button"
+            onClick={() => setParam('status', 'Converted')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              searchParams.get('status') === 'Converted'
+                ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Converted
+          </button>
+          <button
+            type="button"
+            onClick={() => setParam('status', 'Lost')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              searchParams.get('status') === 'Lost'
+                ? 'bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Lost
+          </button>
+        </div>
+      )}
 
       {/* =====================================================
           SEARCH + FILTER
@@ -530,6 +578,8 @@ export default function Leads() {
               'search'
             )
               ? 'No leads match your filters'
+              : isClosed
+              ? 'No closed leads yet'
               : 'No leads yet'
           }
           description={
@@ -538,13 +588,16 @@ export default function Leads() {
               'search'
             )
               ? 'Try adjusting your filters or search query.'
+              : isClosed
+              ? 'Leads marked as Converted or Lost will appear here.'
               : 'Start by adding your first customer enquiry.'
           }
           action={
             !hasFilters &&
             !searchParams.get(
               'search'
-            )
+            ) &&
+            !isClosed
               ? {
                   label: 'Add Lead',
                   onClick: () =>
@@ -612,6 +665,7 @@ export default function Leads() {
         onApply={
           handleFiltersApply
         }
+        isClosed={isClosed}
       />
 
       {/* =====================================================
