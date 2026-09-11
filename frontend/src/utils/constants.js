@@ -8,6 +8,15 @@ export const LEAD_STATUSES = [
   'Lost',
 ];
 
+export const CLOSED_LEAD_STATUSES = ['Converted', 'Lost'];
+
+export const ACTIVE_LEAD_STATUSES = [
+  'New',
+  'Contacted',
+  'Followup',
+  'Quotation',
+];
+
 // ─── Lead Priorities ───────────────────────────────────────────────────────
 export const LEAD_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 

@@ -13,7 +13,8 @@ const { assertEmployeeLeadAccess } = require('../utils/leadAccess');
 const {
   normalizeLeadStatus,
   isWritableLeadStatus,
-  statusFilterQuery
+  statusFilterQuery,
+  CLOSED_LEAD_STATUSES
 } = require('../utils/leadStatus');
 
 /**
@@ -100,8 +101,94 @@ const buildLeadFilterQuery = (user, filters = {}) => {
     query.assignedTo = filters.assignedTo;
   }
 
-  if (filters.status) {
-    query.status = statusFilterQuery(filters.status);
+  // 2. Status handling — 24-hour Converted/Lost visibility rule
+  const isClosed =
+    filters.scope === 'closed' ||
+    filters.isClosed === 'true' ||
+    filters.isClosed === true;
+
+  const now = new Date();
+  const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  if (isClosed) {
+    // Closed Leads: status must be Converted or Lost AND 24-hour closure period completed (closedAt <= cutoff24h)
+    if (filters.status) {
+      if (Array.isArray(filters.status)) {
+        const matching = filters.status
+          .map(normalizeLeadStatus)
+          .filter((s) => CLOSED_LEAD_STATUSES.includes(s));
+        query.status = matching.length > 0 ? { $in: matching } : { $in: CLOSED_LEAD_STATUSES };
+      } else {
+        const normalized = normalizeLeadStatus(filters.status);
+        if (CLOSED_LEAD_STATUSES.includes(normalized)) {
+          query.status = normalized;
+        } else {
+          query.status = { $in: CLOSED_LEAD_STATUSES };
+        }
+      }
+    } else {
+      query.status = { $in: CLOSED_LEAD_STATUSES };
+    }
+
+    // Must have passed the 24-hour closure period
+    // Legacy records without closedAt fallback to convertedAt || updatedAt
+    const closedTimeCondition = {
+      $or: [
+        { closedAt: { $lte: cutoff24h, $ne: null } },
+        { closedAt: null, convertedAt: { $lte: cutoff24h, $ne: null } },
+        { closedAt: null, convertedAt: null, updatedAt: { $lte: cutoff24h } }
+      ]
+    };
+
+    query.$and = query.$and || [];
+    query.$and.push(closedTimeCondition);
+  } else {
+    // Active Leads: non-closed statuses, OR Converted/Lost within the first 24 hours
+    if (filters.status) {
+      if (Array.isArray(filters.status)) {
+        const activeOnly = filters.status
+          .map(normalizeLeadStatus)
+          .filter((s) => !CLOSED_LEAD_STATUSES.includes(s));
+        const closedOnly = filters.status
+          .map(normalizeLeadStatus)
+          .filter((s) => CLOSED_LEAD_STATUSES.includes(s));
+
+        if (activeOnly.length > 0 && closedOnly.length > 0) {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { status: statusFilterQuery(activeOnly) },
+              { status: { $in: closedOnly }, closedAt: { $gt: cutoff24h } }
+            ]
+          });
+        } else if (activeOnly.length > 0) {
+          query.status = statusFilterQuery(activeOnly);
+        } else if (closedOnly.length > 0) {
+          query.status = { $in: closedOnly };
+          query.closedAt = { $gt: cutoff24h };
+        } else {
+          query.status = { $in: [] };
+        }
+      } else {
+        const normalized = normalizeLeadStatus(filters.status);
+        if (CLOSED_LEAD_STATUSES.includes(normalized)) {
+          // In active list, Converted/Lost only match if within first 24h
+          query.status = normalized;
+          query.closedAt = { $gt: cutoff24h };
+        } else {
+          query.status = statusFilterQuery(filters.status);
+        }
+      }
+    } else {
+      // Default active view: non-closed statuses OR (closed status AND closedAt > cutoff24h)
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { status: { $nin: CLOSED_LEAD_STATUSES } },
+          { status: { $in: CLOSED_LEAD_STATUSES }, closedAt: { $gt: cutoff24h } }
+        ]
+      });
+    }
   }
 
   if (filters.priority) {
@@ -140,20 +227,11 @@ const buildLeadFilterQuery = (user, filters = {}) => {
       { location: { $regex: s, $options: 'i' } }
     ];
 
-    if (query.$or) {
-      query.$and = [
-        { $or: query.$or },
-        { $or: searchConditions }
-      ];
-
-      delete query.$or;
-    } else {
-      query.$or = searchConditions;
-    }
+    query.$and = query.$and || [];
+    query.$and.push({ $or: searchConditions });
   }
 
   // 4. Follow-up Filter
-  const now = new Date();
 
   const startOfToday = new Date(
     now.getFullYear(),
@@ -195,42 +273,22 @@ const buildLeadFilterQuery = (user, filters = {}) => {
         $gte: startOfToday,
         $lte: endOfToday
       };
-
-      query.status = {
-        $nin: ['Converted', 'Lost']
-      };
     } else if (followUpVal === 'tomorrow') {
       query.nextFollowUpDate = {
         $gte: startOfTomorrow,
         $lte: endOfTomorrow
-      };
-
-      query.status = {
-        $nin: ['Converted', 'Lost']
       };
     } else if (followUpVal === 'overdue') {
       query.nextFollowUpDate = {
         $lt: startOfToday,
         $ne: null
       };
-
-      query.status = {
-        $nin: ['Converted', 'Lost']
-      };
     } else if (followUpVal === 'upcoming') {
       query.nextFollowUpDate = {
         $gt: endOfToday
       };
-
-      query.status = {
-        $nin: ['Converted', 'Lost']
-      };
     } else if (followUpVal === 'no_followup') {
       query.nextFollowUpDate = null;
-
-      query.status = {
-        $nin: ['Converted', 'Lost']
-      };
     }
   }
 
@@ -498,6 +556,14 @@ const createLead = async (leadData, currentUser) => {
 
     createdBy:
       currentUser._id,
+
+    convertedAt:
+      initialStatus === 'Converted' ? new Date() : null,
+
+    closedAt:
+      initialStatus === 'Converted' || initialStatus === 'Lost'
+        ? new Date()
+        : null,
 
     lastContactedAt:
       nextFollowUpDate || remarks
@@ -920,18 +986,27 @@ const updateLead = async (
       );
     }
 
-    lead.status =
+    const normalizedNewStatus =
       normalizeLeadStatus(updateData.status);
 
-    if (
-      updateData.status ===
-      'Converted'
-    ) {
-      lead.convertedAt =
-        new Date();
+    lead.status = normalizedNewStatus;
+
+    if (normalizedNewStatus === 'Converted') {
+      if (!lead.convertedAt) {
+        lead.convertedAt = new Date();
+      }
+      if (!lead.closedAt) {
+        lead.closedAt = new Date();
+      }
+    } else if (normalizedNewStatus === 'Lost') {
+      lead.convertedAt = null;
+      if (!lead.closedAt) {
+        lead.closedAt = new Date();
+      }
     } else {
-      lead.convertedAt =
-        null;
+      // Reopened or transitioned to an active status
+      lead.convertedAt = null;
+      lead.closedAt = null;
     }
   }
 
@@ -1097,26 +1172,35 @@ const updateLeadStatus = async (
   const previousStatus =
     lead.status;
 
-  lead.status =
-    status;
+  if (status !== previousStatus) {
+    lead.status =
+      status;
 
-  if (
-    status === 'Converted'
-  ) {
-    lead.convertedAt =
-      new Date();
+    if (status === 'Converted') {
+      if (!lead.convertedAt) {
+        lead.convertedAt = new Date();
+      }
+      if (!lead.closedAt) {
+        lead.closedAt = new Date();
+      }
+    } else if (status === 'Lost') {
+      lead.convertedAt = null;
+      if (!lead.closedAt) {
+        lead.closedAt = new Date();
+      }
+      lead.lostReason =
+        lostReason
+          ? lostReason.trim()
+          : 'Customer not interested';
+    } else {
+      // Reopened or active status
+      lead.convertedAt = null;
+      lead.closedAt = null;
+    }
   } else {
-    lead.convertedAt =
-      null;
-  }
-
-  if (
-    status === 'Lost'
-  ) {
-    lead.lostReason =
-      lostReason
-        ? lostReason.trim()
-        : 'Customer not interested';
+    if (status === 'Lost' && lostReason !== undefined) {
+      lead.lostReason = lostReason.trim();
+    }
   }
 
   lead.lastContactedAt =

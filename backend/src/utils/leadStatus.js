@@ -15,6 +15,12 @@ const ALL_STORED_LEAD_STATUSES = [
   ...LEGACY_LEAD_STATUSES
 ];
 
+const CLOSED_LEAD_STATUSES = ['Converted', 'Lost'];
+
+const ACTIVE_LEAD_STATUSES = CANONICAL_LEAD_STATUSES.filter(
+  (status) => !CLOSED_LEAD_STATUSES.includes(status)
+);
+
 const STATUS_ALIASES = {
   'Follow Up': 'Followup'
 };
@@ -53,6 +59,8 @@ module.exports = {
   CANONICAL_LEAD_STATUSES,
   LEGACY_LEAD_STATUSES,
   ALL_STORED_LEAD_STATUSES,
+  CLOSED_LEAD_STATUSES,
+  ACTIVE_LEAD_STATUSES,
   STATUS_ALIASES,
   normalizeLeadStatus,
   isWritableLeadStatus,
