@@ -25,6 +25,7 @@ router.delete('/:id', authorize('admin'), ctrl.deleteLead);
 // Lead-specific actions
 router.patch('/:id/status', ctrl.updateStatus);
 router.patch('/:id/assign', authorize('admin'), ctrl.assignLead);
+router.patch('/:id/restore', authorize('admin'), ctrl.restoreLead);
 
 // Follow-ups
 router.post('/:id/followups', addFollowup);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getHrDashboardApi } from '../services/hrApi';
 import { LoadingState, ErrorState } from '../components/common/States';
+import HrWorkforceChart from '../components/dashboard/HrWorkforceChart';
 
 export default function HRDashboard() {
   const [data, setData] = useState(null);
@@ -26,9 +27,13 @@ export default function HRDashboard() {
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Employee overview and workforce status.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Metric label="Total employees" value={data.totals.totalEmployees} />
-        <Metric label="Active employees" value={data.totals.activeEmployees} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Metric label="Total employees" value={data.totals.totalEmployees} />
+          <Metric label="Active employees" value={data.totals.activeEmployees} />
+          <Metric label="Passport Alerts" value={data.totals.passportAlerts || 0} alert={data.totals.passportAlerts > 0} />
+        </div>
+        <HrWorkforceChart activeCount={data.totals.activeEmployees} inactiveCount={data.totals.inactiveEmployees} />
       </div>
 
 

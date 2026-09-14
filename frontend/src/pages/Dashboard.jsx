@@ -11,6 +11,10 @@ import { LoadingState, ErrorState } from '../components/common/States';
 import { formatDate, formatFollowUpDate, whatsappLink, telLink, getInitials } from '../utils/formatters';
 import { STATUS_COLORS } from '../utils/constants';
 import { StatusBadge, PriorityBadge } from '../components/common/Badges';
+import LeadStatusChart from '../components/dashboard/LeadStatusChart';
+import LeadTrendChart from '../components/dashboard/LeadTrendChart';
+import PartsDemandChart from '../components/dashboard/PartsDemandChart';
+import EmployeePerformanceChart from '../components/dashboard/EmployeePerformanceChart';
 
 function MetricCard({ label, value, color, icon: Icon, onClick }) {
   return (
@@ -83,7 +87,17 @@ export default function Dashboard() {
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!data) return null;
 
-  const { metrics, todayFollowupsList, overdueFollowupsList, recentLeads, employeePerformance, topPartsDemand, topVehiclesDemand } = data;
+  const {
+    metrics,
+    statusBreakdown,
+    monthlyTrends,
+    todayFollowupsList,
+    overdueFollowupsList,
+    recentLeads,
+    employeePerformance,
+    topPartsDemand,
+    topVehiclesDemand
+  } = data;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -115,30 +129,14 @@ export default function Dashboard() {
           onClick={() => navigate('/leads?status=Converted')} />
       </div>
 
-      {/* Status breakdown */}
-      <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4" /> Lead Pipeline
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {[
-            { label: 'New', value: metrics.newLeads, status: 'New' },
-            { label: 'Contacted', value: metrics.contactedLeads, status: 'Contacted' },
-            { label: 'Followup', value: metrics.followupLeads, status: 'Followup' },
-            { label: 'Quotation', value: metrics.quotationLeads, status: 'Quotation' },
-            { label: 'Converted', value: metrics.convertedLeads, status: 'Converted' },
-            { label: 'Lost', value: metrics.lostLeads, status: 'Lost' },
-          ].map(({ label, value, status }) => (
-            <button
-              key={status}
-              onClick={() => navigate(`/leads?status=${encodeURIComponent(status)}`)}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</span>
-              <StatusBadge status={status} />
-            </button>
-          ))}
-        </div>
+      {/* Interactive Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <LeadStatusChart
+          statusBreakdown={statusBreakdown}
+          totalLeads={metrics.totalLeads}
+          onSelectStatus={(status) => navigate(`/leads?status=${encodeURIComponent(status)}`)}
+        />
+        <LeadTrendChart monthlyTrends={monthlyTrends} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -259,71 +257,12 @@ export default function Dashboard() {
       {/* Admin performance overview */}
       {!isEmployee && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Employee Performance */}
-          {employeePerformance.length > 0 && (
-            <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                <Award className="w-4 h-4" /> Employee Performance
-              </h3>
-              <div className="space-y-3">
-                {employeePerformance.slice(0, 5).map((emp) => (
-                  <div key={emp._id} className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-xs font-bold flex-shrink-0">
-                      {getInitials(emp.name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{emp.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2">
-                          {emp.converted}/{emp.totalLeads} converted
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-indigo-500 transition-all"
-                          style={{ width: `${Math.min(parseFloat(emp.conversionRate), 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex-shrink-0">{emp.conversionRate}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Top Parts Demand */}
-          {topPartsDemand.length > 0 && (
-            <div className="rounded-2xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700/50">
-              <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Parts in Demand</h3>
-              <div className="space-y-3">
-                {topPartsDemand.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{item.part}</span>
-                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">
-                      {item.count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {topVehiclesDemand.length > 0 && (
-                <>
-                  <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mt-5 mb-3">Top Vehicles</h3>
-                  <div className="space-y-3">
-                    {topVehiclesDemand.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{item.vehicle}</span>
-                        <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-full">
-                          {item.count}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <div className="lg:col-span-2">
+            <EmployeePerformanceChart employeePerformance={employeePerformance} />
+          </div>
+          <div>
+            <PartsDemandChart topPartsDemand={topPartsDemand} topVehiclesDemand={topVehiclesDemand} />
+          </div>
         </div>
       )}
     </div>

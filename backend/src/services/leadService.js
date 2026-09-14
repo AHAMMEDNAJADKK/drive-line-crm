@@ -75,6 +75,7 @@ const checkDuplicate = async (mobileNumber) => {
   const normalized = normalizePhoneNumber(mobileNumber);
 
   const existing = await Lead.findOne({
+    isDeleted: { $ne: true },
     $or: [
       { canonicalPhoneKey: canonicalKey },
       { mobileNumber: normalized },
@@ -93,6 +94,18 @@ const checkDuplicate = async (mobileNumber) => {
  */
 const buildLeadFilterQuery = (user, filters = {}) => {
   const query = {};
+
+  // 0. Deleted scope handling
+  const isDeletedScope =
+    filters.scope === 'deleted' ||
+    filters.isDeleted === 'true' ||
+    filters.isDeleted === true;
+
+  if (isDeletedScope) {
+    query.isDeleted = true;
+  } else {
+    query.isDeleted = { $ne: true };
+  }
 
   // 1. Role-based scoping — employees see only leads assigned to them
   if (isEmployee(user)) {
@@ -1358,23 +1371,22 @@ const assignLead = async (
 };
 
 /**
- * Delete lead (Admin only)
+ * Delete lead (Soft Delete by default; permanent delete if permanent = true & Admin)
  */
 const deleteLead = async (
   id,
-  currentUser
+  currentUser,
+  permanent = false
 ) => {
   if (
-    currentUser.role !==
-    'admin'
+    currentUser.role !== 'admin'
   ) {
     throw new Error(
       'Only administrators can delete leads'
     );
   }
 
-  const lead =
-    await Lead.findById(id);
+  const lead = await Lead.findById(id);
 
   if (!lead) {
     throw new Error(
@@ -1382,22 +1394,72 @@ const deleteLead = async (
     );
   }
 
-  await Promise.all([
-    Lead.findByIdAndDelete(id),
+  if (permanent === true || permanent === 'true') {
+    await Promise.all([
+      Lead.findByIdAndDelete(id),
+      LeadFollowup.deleteMany({ leadId: id }),
+      LeadActivity.deleteMany({ leadId: id })
+    ]);
 
-    LeadFollowup.deleteMany({
-      leadId: id
-    }),
+    return {
+      message: 'Lead permanently deleted from system'
+    };
+  }
 
-    LeadActivity.deleteMany({
-      leadId: id
-    })
-  ]);
+  // Soft Delete
+  lead.isDeleted = true;
+  lead.deletedAt = new Date();
+  lead.deletedBy = currentUser._id;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    action: 'Lead Deleted',
+    performedBy: currentUser._id,
+    remarks: 'Lead moved to Deleted Leads'
+  });
 
   return {
-    message:
-      'Lead and associated history deleted successfully'
+    message: 'Lead moved to Deleted Leads'
   };
+};
+
+/**
+ * Restore a soft-deleted lead
+ */
+const restoreLead = async (
+  id,
+  currentUser
+) => {
+  if (
+    currentUser.role !== 'admin'
+  ) {
+    throw new Error(
+      'Only administrators can restore deleted leads'
+    );
+  }
+
+  const lead = await Lead.findById(id);
+
+  if (!lead) {
+    throw new Error(
+      'Lead not found'
+    );
+  }
+
+  lead.isDeleted = false;
+  lead.deletedAt = null;
+  lead.deletedBy = null;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    action: 'Lead Restored',
+    performedBy: currentUser._id,
+    remarks: 'Lead restored from Deleted Leads'
+  });
+
+  return lead;
 };
 
 /**
@@ -1437,6 +1499,7 @@ module.exports = {
   updateLeadStatus,
   assignLead,
   deleteLead,
+  restoreLead,
   getLeadActivities,
   buildLeadFilterQuery
 };

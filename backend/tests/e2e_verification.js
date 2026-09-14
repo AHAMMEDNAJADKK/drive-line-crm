@@ -281,7 +281,7 @@ async function runTests() {
     assert(singlePdfExport.status === 200 && singlePdfExport.data.byteLength > 0, 'Single Lead PDF dossier downloads successfully');
 
     // Clean up test lead
-    await request(`/leads/${leadId}`, { method: 'DELETE', token: adminToken });
+    await request(`/leads/${leadId}?permanent=true`, { method: 'DELETE', token: adminToken });
 
   } catch (err) {
     console.error('Unexpected test failure:', err);

@@ -75,8 +75,20 @@ const assignLead = async (req, res) => {
 
 const deleteLead = async (req, res) => {
   try {
-    const result = await leadService.deleteLead(req.params.id, req.user);
+    const isPermanent = req.query.permanent === 'true' || req.query.permanent === true;
+    const result = await leadService.deleteLead(req.params.id, req.user, isPermanent);
     res.json({ success: true, ...result });
+  } catch (err) {
+    if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
+    if (err.message.includes('Only administrators')) return res.status(403).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const restoreLead = async (req, res) => {
+  try {
+    const lead = await leadService.restoreLead(req.params.id, req.user);
+    res.json({ success: true, message: 'Lead restored successfully', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
     if (err.message.includes('Only administrators')) return res.status(403).json({ success: false, message: err.message });
@@ -95,4 +107,4 @@ const getActivity = async (req, res) => {
   }
 };
 
-module.exports = { checkDuplicate, createLead, listLeads, getLead, updateLead, updateStatus, assignLead, deleteLead, getActivity };
+module.exports = { checkDuplicate, createLead, listLeads, getLead, updateLead, updateStatus, assignLead, deleteLead, restoreLead, getActivity };
