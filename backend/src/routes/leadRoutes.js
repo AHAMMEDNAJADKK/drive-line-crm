@@ -20,12 +20,12 @@ router.post('/', ctrl.createLead);
 router.get('/', ctrl.listLeads);
 router.get('/:id', ctrl.getLead);
 router.patch('/:id', ctrl.updateLead);
-router.delete('/:id', authorize('admin'), ctrl.deleteLead);
+router.delete('/:id', ctrl.deleteLead);
 
 // Lead-specific actions
 router.patch('/:id/status', ctrl.updateStatus);
 router.patch('/:id/assign', authorize('admin'), ctrl.assignLead);
-router.patch('/:id/restore', authorize('admin'), ctrl.restoreLead);
+router.patch('/:id/restore', ctrl.restoreLead);
 
 // Follow-ups
 router.post('/:id/followups', addFollowup);

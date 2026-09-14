@@ -290,17 +290,15 @@ export default function LeadTable({
                           <Eye className="w-4 h-4" />
                         </button>
 
-                        {/* SOFT DELETE - ADMIN ONLY */}
-                        {user?.role === 'admin' && (
-                          <button
-                            type="button"
-                            onClick={() => setDeleteId(lead._id)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title="Delete Lead"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* SOFT DELETE - AVAILABLE FOR EVERYONE */}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteId(lead._id)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </>
                     )}
 
@@ -442,6 +440,16 @@ export default function LeadTable({
                       <MessageCircle className="w-3.5 h-3.5" />
                       WA
                     </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(lead._id)}
+                      className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold"
+                      title="Delete Lead"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
                   </>
                 )}
 

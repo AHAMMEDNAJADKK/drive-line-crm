@@ -80,7 +80,7 @@ const deleteLead = async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Only administrators')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message.includes('administrators') || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -91,7 +91,7 @@ const restoreLead = async (req, res) => {
     res.json({ success: true, message: 'Lead restored successfully', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Only administrators')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message.includes('administrators') || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };

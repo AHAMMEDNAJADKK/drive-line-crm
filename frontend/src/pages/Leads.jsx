@@ -398,7 +398,7 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
               {pagination.total === 1
                 ? isDeletedView ? 'deleted lead' : isClosed ? 'closed lead' : 'lead'
                 : isDeletedView ? 'deleted leads' : isClosed ? 'closed leads' : 'leads'}{' '}
-              {isDeletedView ? 'in recycle bin' : 'total'} {isClosed ? '(Converted & Lost past 24h)' : ''}
+              {isDeletedView ? 'in recycle bin' : 'total'} {isClosed ? '(Converted & Lost)' : ''}
             </p>
           )}
         </div>

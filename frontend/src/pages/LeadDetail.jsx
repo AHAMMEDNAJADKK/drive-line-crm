@@ -132,7 +132,8 @@ export default function LeadDetail() {
   if (!lead) return null;
 
   const canAssign = user?.role === 'admin';
-  const canDelete = user?.role === 'admin';
+  const canSoftDelete = true;
+  const canPermanentDelete = user?.role === 'admin';
 
   return (
     <div className="space-y-6">
@@ -210,16 +211,14 @@ export default function LeadDetail() {
           </button>
           {lead.isDeleted ? (
             <>
-              {canDelete && (
-                <button
-                  onClick={handleRestore}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-sm font-semibold transition-colors"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Restore Lead</span>
-                </button>
-              )}
-              {canDelete && (
+              <button
+                onClick={handleRestore}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-sm font-semibold transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Restore Lead</span>
+              </button>
+              {canPermanentDelete && (
                 <button
                   onClick={() => setPermanentDeleteOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 text-sm font-semibold transition-colors"
@@ -231,15 +230,13 @@ export default function LeadDetail() {
               )}
             </>
           ) : (
-            canDelete && (
-              <button
-                onClick={() => setDeleteOpen(true)}
-                className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 text-sm font-semibold transition-colors"
-                title="Delete Lead"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 text-sm font-semibold transition-colors"
+              title="Delete Lead"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
