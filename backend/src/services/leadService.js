@@ -75,6 +75,7 @@ const checkDuplicate = async (mobileNumber) => {
   const normalized = normalizePhoneNumber(mobileNumber);
 
   const existing = await Lead.findOne({
+    isDeleted: { $ne: true },
     $or: [
       { canonicalPhoneKey: canonicalKey },
       { mobileNumber: normalized },
@@ -93,6 +94,19 @@ const checkDuplicate = async (mobileNumber) => {
  */
 const buildLeadFilterQuery = (user, filters = {}) => {
   const query = {};
+  const now = new Date();
+
+  // 0. Deleted scope handling
+  const isDeletedScope =
+    filters.scope === 'deleted' ||
+    filters.isDeleted === 'true' ||
+    filters.isDeleted === true;
+
+  if (isDeletedScope) {
+    query.isDeleted = true;
+  } else {
+    query.isDeleted = { $ne: true };
+  }
 
   // 1. Role-based scoping — employees see only leads assigned to them
   if (isEmployee(user)) {
@@ -101,94 +115,21 @@ const buildLeadFilterQuery = (user, filters = {}) => {
     query.assignedTo = filters.assignedTo;
   }
 
-  // 2. Status handling — 24-hour Converted/Lost visibility rule
+  // 2. Status handling — Closed leads (Converted & Lost) vs Active leads
   const isClosed =
     filters.scope === 'closed' ||
     filters.isClosed === 'true' ||
     filters.isClosed === true;
 
-  const now = new Date();
-  const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  if (isClosed) {
-    // Closed Leads: status must be Converted or Lost AND 24-hour closure period completed (closedAt <= cutoff24h)
-    if (filters.status) {
-      if (Array.isArray(filters.status)) {
-        const matching = filters.status
-          .map(normalizeLeadStatus)
-          .filter((s) => CLOSED_LEAD_STATUSES.includes(s));
-        query.status = matching.length > 0 ? { $in: matching } : { $in: CLOSED_LEAD_STATUSES };
-      } else {
-        const normalized = normalizeLeadStatus(filters.status);
-        if (CLOSED_LEAD_STATUSES.includes(normalized)) {
-          query.status = normalized;
-        } else {
-          query.status = { $in: CLOSED_LEAD_STATUSES };
-        }
-      }
-    } else {
-      query.status = { $in: CLOSED_LEAD_STATUSES };
-    }
-
-    // Must have passed the 24-hour closure period
-    // Legacy records without closedAt fallback to convertedAt || updatedAt
-    const closedTimeCondition = {
-      $or: [
-        { closedAt: { $lte: cutoff24h, $ne: null } },
-        { closedAt: null, convertedAt: { $lte: cutoff24h, $ne: null } },
-        { closedAt: null, convertedAt: null, updatedAt: { $lte: cutoff24h } }
-      ]
-    };
-
-    query.$and = query.$and || [];
-    query.$and.push(closedTimeCondition);
-  } else {
-    // Active Leads: non-closed statuses, OR Converted/Lost within the first 24 hours
-    if (filters.status) {
-      if (Array.isArray(filters.status)) {
-        const activeOnly = filters.status
-          .map(normalizeLeadStatus)
-          .filter((s) => !CLOSED_LEAD_STATUSES.includes(s));
-        const closedOnly = filters.status
-          .map(normalizeLeadStatus)
-          .filter((s) => CLOSED_LEAD_STATUSES.includes(s));
-
-        if (activeOnly.length > 0 && closedOnly.length > 0) {
-          query.$and = query.$and || [];
-          query.$and.push({
-            $or: [
-              { status: statusFilterQuery(activeOnly) },
-              { status: { $in: closedOnly }, closedAt: { $gt: cutoff24h } }
-            ]
-          });
-        } else if (activeOnly.length > 0) {
-          query.status = statusFilterQuery(activeOnly);
-        } else if (closedOnly.length > 0) {
-          query.status = { $in: closedOnly };
-          query.closedAt = { $gt: cutoff24h };
-        } else {
-          query.status = { $in: [] };
-        }
-      } else {
-        const normalized = normalizeLeadStatus(filters.status);
-        if (CLOSED_LEAD_STATUSES.includes(normalized)) {
-          // In active list, Converted/Lost only match if within first 24h
-          query.status = normalized;
-          query.closedAt = { $gt: cutoff24h };
-        } else {
-          query.status = statusFilterQuery(filters.status);
-        }
-      }
-    } else {
-      // Default active view: non-closed statuses OR (closed status AND closedAt > cutoff24h)
-      query.$and = query.$and || [];
-      query.$and.push({
-        $or: [
-          { status: { $nin: CLOSED_LEAD_STATUSES } },
-          { status: { $in: CLOSED_LEAD_STATUSES }, closedAt: { $gt: cutoff24h } }
-        ]
-      });
-    }
+  if (filters.status) {
+    // Explicit status filter requested (e.g. Converted, Lost, New, Followup, etc.)
+    query.status = statusFilterQuery(filters.status);
+  } else if (isClosed) {
+    // Default closed view: all Converted and Lost leads
+    query.status = { $in: CLOSED_LEAD_STATUSES };
+  } else if (!isDeletedScope) {
+    // Default active view: non-closed statuses
+    query.status = { $nin: CLOSED_LEAD_STATUSES };
   }
 
   if (filters.priority) {
@@ -1358,23 +1299,14 @@ const assignLead = async (
 };
 
 /**
- * Delete lead (Admin only)
+ * Delete lead (Soft Delete by default; permanent delete if permanent = true & Admin)
  */
 const deleteLead = async (
   id,
-  currentUser
+  currentUser,
+  permanent = false
 ) => {
-  if (
-    currentUser.role !==
-    'admin'
-  ) {
-    throw new Error(
-      'Only administrators can delete leads'
-    );
-  }
-
-  const lead =
-    await Lead.findById(id);
+  const lead = await Lead.findById(id);
 
   if (!lead) {
     throw new Error(
@@ -1382,22 +1314,74 @@ const deleteLead = async (
     );
   }
 
-  await Promise.all([
-    Lead.findByIdAndDelete(id),
+  assertEmployeeLeadAccess(lead, currentUser, 'modify');
 
-    LeadFollowup.deleteMany({
-      leadId: id
-    }),
+  if (permanent === true || permanent === 'true') {
+    if (currentUser.role !== 'admin') {
+      throw new Error(
+        'Only administrators can permanently delete leads'
+      );
+    }
 
-    LeadActivity.deleteMany({
-      leadId: id
-    })
-  ]);
+    await Promise.all([
+      Lead.findByIdAndDelete(id),
+      LeadFollowup.deleteMany({ leadId: id }),
+      LeadActivity.deleteMany({ leadId: id })
+    ]);
+
+    return {
+      message: 'Lead permanently deleted from system'
+    };
+  }
+
+  // Soft Delete - allowed for assigned employee / admin
+  lead.isDeleted = true;
+  lead.deletedAt = new Date();
+  lead.deletedBy = currentUser._id;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    action: 'Lead Deleted',
+    performedBy: currentUser._id,
+    remarks: 'Lead moved to Deleted Leads'
+  });
 
   return {
-    message:
-      'Lead and associated history deleted successfully'
+    message: 'Lead moved to Deleted Leads'
   };
+};
+
+/**
+ * Restore a soft-deleted lead
+ */
+const restoreLead = async (
+  id,
+  currentUser
+) => {
+  const lead = await Lead.findById(id);
+
+  if (!lead) {
+    throw new Error(
+      'Lead not found'
+    );
+  }
+
+  assertEmployeeLeadAccess(lead, currentUser, 'modify');
+
+  lead.isDeleted = false;
+  lead.deletedAt = null;
+  lead.deletedBy = null;
+  await lead.save();
+
+  await LeadActivity.create({
+    leadId: lead._id,
+    action: 'Lead Restored',
+    performedBy: currentUser._id,
+    remarks: 'Lead restored from Deleted Leads'
+  });
+
+  return lead;
 };
 
 /**
@@ -1437,6 +1421,7 @@ module.exports = {
   updateLeadStatus,
   assignLead,
   deleteLead,
+  restoreLead,
   getLeadActivities,
   buildLeadFilterQuery
 };

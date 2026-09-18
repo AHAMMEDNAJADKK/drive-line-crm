@@ -22,7 +22,9 @@ const leadActivitySchema = new mongoose.Schema(
         'Lead Converted',
         'Lead Lost',
         'Lead Imported',
-        'Lead Exported'
+        'Lead Exported',
+        'Lead Deleted',
+        'Lead Restored'
       ]
     },
     performedBy: {

@@ -1354,20 +1354,6 @@ export default function LeadForm({
 
     requirements.forEach(
       (item, index) => {
-        const hasAnyValue =
-          item.vehicleName?.trim() ||
-          item.vehicleModel?.trim() ||
-          item.partName?.trim() ||
-          item.partNumber?.trim() ||
-          item.remarks?.trim();
-
-        if (!hasAnyValue) {
-          requirementErrors[
-            `requirement_${index}_partName`
-          ] =
-            'Add at least one vehicle or part detail';
-        }
-
         if (
           !isNew && item.quantity &&
           Number(item.quantity) < 1

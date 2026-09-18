@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Edit, Calendar, UserCheck,
   FileText, Clock, History, AlertCircle, CheckCircle2, Car, Wrench,
-  Building, User, Trash2
+  Building, User, Trash2, RotateCcw
 } from 'lucide-react';
 import {
   getLeadApi, updateLeadApi, updateLeadStatusApi, assignLeadApi,
-  deleteLeadApi, getLeadFollowupsApi, getLeadActivityApi,
+  deleteLeadApi, restoreLeadApi, getLeadFollowupsApi, getLeadActivityApi,
   exportSingleLeadPDFApi
 } from '../services/leadApi';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +39,7 @@ export default function LeadDetail() {
   const [followupOpen, setFollowupOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [permanentDeleteOpen, setPermanentDeleteOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchLeadData = useCallback(async () => {
@@ -69,8 +70,8 @@ export default function LeadDetail() {
     try {
       const res = await updateLeadApi(id, formData);
       setLead(res.data.data);
-      toast.success('Lead updated successfully');
       setEditOpen(false);
+      toast.success('Lead updated successfully');
       fetchLeadData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update lead');
@@ -79,13 +80,7 @@ export default function LeadDetail() {
     }
   };
 
-  const handleStatusChange = async (newStatus) => {
-    let lostReason = '';
-    if (newStatus === 'Lost') {
-      const reason = window.prompt('Please enter the reason why this lead was lost:');
-      if (!reason) return;
-      lostReason = reason;
-    }
+  const handleStatusChange = async (newStatus, lostReason) => {
     try {
       const res = await updateLeadStatusApi(id, { status: newStatus, lostReason });
       setLead(res.data.data);
@@ -105,10 +100,30 @@ export default function LeadDetail() {
   const handleDelete = async () => {
     try {
       await deleteLeadApi(id);
-      toast.success('Lead deleted successfully');
-      navigate('/leads');
+      toast.success('Lead moved to Deleted Leads');
+      navigate('/closed-leads?tab=deleted');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete lead');
+    }
+  };
+
+  const handlePermanentDelete = async () => {
+    try {
+      await deleteLeadApi(id, { permanent: true });
+      toast.success('Lead permanently deleted');
+      navigate('/closed-leads?tab=deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to permanently delete lead');
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await restoreLeadApi(id);
+      toast.success('Lead restored successfully');
+      fetchLeadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to restore lead');
     }
   };
 
@@ -117,7 +132,8 @@ export default function LeadDetail() {
   if (!lead) return null;
 
   const canAssign = user?.role === 'admin';
-  const canDelete = user?.role === 'admin';
+  const canSoftDelete = true;
+  const canPermanentDelete = user?.role === 'admin';
 
   return (
     <div className="space-y-6">
@@ -193,7 +209,27 @@ export default function LeadDetail() {
             <FileText className="w-4 h-4" />
             <span>PDF</span>
           </button>
-          {canDelete && (
+          {lead.isDeleted ? (
+            <>
+              <button
+                onClick={handleRestore}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-sm font-semibold transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Restore Lead</span>
+              </button>
+              {canPermanentDelete && (
+                <button
+                  onClick={() => setPermanentDeleteOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 text-sm font-semibold transition-colors"
+                  title="Permanently Delete Lead"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Permanently</span>
+                </button>
+              )}
+            </>
+          ) : (
             <button
               onClick={() => setDeleteOpen(true)}
               className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 text-sm font-semibold transition-colors"
@@ -519,14 +555,25 @@ export default function LeadDetail() {
         onAssigned={handleAssign}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Soft Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
-        title="Delete Lead"
-        message={`Are you sure you want to permanently delete lead for ${lead.customerName || lead.mobileNumber}? This action cannot be undone.`}
-        confirmText="Delete Lead"
+        title="Move to Deleted Leads?"
+        message={`Are you sure you want to move the lead for ${lead.customerName || lead.mobileNumber} to Deleted Leads? You can view or restore it anytime later.`}
+        confirmText="Move to Deleted"
+        type="danger"
+      />
+
+      {/* Permanent Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={permanentDeleteOpen}
+        onClose={() => setPermanentDeleteOpen(false)}
+        onConfirm={handlePermanentDelete}
+        title="Permanently Delete Lead?"
+        message={`Are you sure you want to PERMANENTLY delete the lead for ${lead.customerName || lead.mobileNumber}? This will remove all history and CANNOT be undone.`}
+        confirmText="Delete Permanently"
         type="danger"
       />
     </div>

@@ -133,6 +133,51 @@ const getDashboardStats = async (currentUser) => {
     { $limit: 5 }
   ]);
 
+  // 6-Month Monthly Trends (Total, Converted, Lost)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const rawMonthlyTrends = await Lead.aggregate([
+    { $match: { ...baseQuery, createdAt: { $gte: sixMonthsAgo } } },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' }
+        },
+        total: { $sum: 1 },
+        converted: {
+          $sum: { $cond: [{ $eq: ['$status', 'Converted'] }, 1, 0] }
+        },
+        lost: {
+          $sum: { $cond: [{ $eq: ['$status', 'Lost'] }, 1, 0] }
+        }
+      }
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } }
+  ]);
+
+  // Build last 6 months array ensuring all 6 months are present
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyTrends = [];
+  const curr = new Date(sixMonthsAgo);
+  for (let i = 0; i < 6; i++) {
+    const yr = curr.getFullYear();
+    const mo = curr.getMonth() + 1; // 1-indexed for aggregation matching
+    const match = rawMonthlyTrends.find(m => m._id.year === yr && m._id.month === mo);
+
+    monthlyTrends.push({
+      month: monthNames[curr.getMonth()],
+      fullYear: yr,
+      total: match ? match.total : 0,
+      converted: match ? match.converted : 0,
+      lost: match ? match.lost : 0
+    });
+    curr.setMonth(curr.getMonth() + 1);
+  }
+
   return {
     metrics: {
       totalLeads,
@@ -147,6 +192,7 @@ const getDashboardStats = async (currentUser) => {
       conversionRate
     },
     statusBreakdown,
+    monthlyTrends,
     todayFollowupsList,
     overdueFollowupsList,
     recentLeads,

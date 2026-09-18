@@ -105,7 +105,7 @@ async function runTests() {
     assert(empExportPdf.status === 403, 'Employee is forbidden (403) from exporting PDF dossier of another user lead');
 
     // Clean up admin confidential lead
-    await request(`/leads/${adminLeadId}`, { method: 'DELETE', token: adminToken });
+    await request(`/leads/${adminLeadId}?permanent=true`, { method: 'DELETE', token: adminToken });
 
     // 5. Lead Lifecycle (Fast creation, Duplicate check, Full fields, Follow-up, Pipeline)
     console.log('\n5. Testing Lead Lifecycle & Duplicate Detection:');
@@ -281,7 +281,7 @@ async function runTests() {
     assert(singlePdfExport.status === 200 && singlePdfExport.data.byteLength > 0, 'Single Lead PDF dossier downloads successfully');
 
     // Clean up test lead
-    await request(`/leads/${leadId}`, { method: 'DELETE', token: adminToken });
+    await request(`/leads/${leadId}?permanent=true`, { method: 'DELETE', token: adminToken });
 
   } catch (err) {
     console.error('Unexpected test failure:', err);

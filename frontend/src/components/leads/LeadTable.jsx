@@ -6,6 +6,7 @@ import {
   Eye,
   Calendar,
   Trash2,
+  RotateCcw,
 } from 'lucide-react';
 
 import { StatusBadge, PriorityBadge } from '../common/Badges';
@@ -23,12 +24,16 @@ export default function LeadTable({
   user,
   onView,
   onDelete,
+  onPermanentDelete,
+  onRestore,
+  isDeletedView = false,
   onStatusChange,
   onRefresh,
 }) {
   const navigate = useNavigate();
 
   const [deleteId, setDeleteId] = useState(null);
+  const [permanentDeleteId, setPermanentDeleteId] = useState(null);
   const [followupLead, setFollowupLead] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -43,6 +48,22 @@ export default function LeadTable({
       }
 
       setDeleteId(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handlePermanentDeleteConfirm = async () => {
+    if (!permanentDeleteId) return;
+
+    setIsDeleting(true);
+
+    try {
+      if (onPermanentDelete) {
+        await onPermanentDelete(permanentDeleteId);
+      }
+
+      setPermanentDeleteId(null);
     } finally {
       setIsDeleting(false);
     }
@@ -92,7 +113,7 @@ export default function LeadTable({
               </th>
 
               <th className="py-3.5 px-4">
-                Next Follow-up
+                {isDeletedView ? 'Deleted Date' : 'Next Follow-up'}
               </th>
 
               <th className="py-3.5 px-4 text-right">
@@ -110,9 +131,7 @@ export default function LeadTable({
                 onClick={() => handleRowClick(lead._id)}
               >
 
-                {/* =================================================
-                    CUSTOMER
-                ================================================= */}
+                {/* CUSTOMER */}
                 <td className="py-3.5 px-4">
                   <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate max-w-[150px]">
                     {lead.customerName ||
@@ -128,9 +147,7 @@ export default function LeadTable({
                   </p>
                 </td>
 
-                {/* =================================================
-                    VEHICLE / PART
-                ================================================= */}
+                {/* VEHICLE / PART */}
                 <td className="py-3.5 px-4">
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate max-w-[160px]">
                     {lead.partRequired || (
@@ -149,23 +166,17 @@ export default function LeadTable({
                   )}
                 </td>
 
-                {/* =================================================
-                    STATUS
-                ================================================= */}
+                {/* STATUS */}
                 <td className="py-3.5 px-4">
                   <StatusBadge status={lead.status} />
                 </td>
 
-                {/* =================================================
-                    PRIORITY
-                ================================================= */}
+                {/* PRIORITY */}
                 <td className="py-3.5 px-4">
                   <PriorityBadge priority={lead.priority} />
                 </td>
 
-                {/* =================================================
-                    ASSIGNED TO
-                ================================================= */}
+                {/* ASSIGNED TO */}
                 <td className="py-3.5 px-4">
                   <p className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
                     {lead.assignedTo?.name || (
@@ -176,94 +187,119 @@ export default function LeadTable({
                   </p>
                 </td>
 
-                {/* =================================================
-                    NEXT FOLLOW-UP
-                ================================================= */}
+                {/* NEXT FOLLOW-UP / DELETED DATE */}
                 <td className="py-3.5 px-4">
-                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                    {formatFollowUpDate(
-                      lead.nextFollowUpDate
-                    )}
-                  </span>
+                  {isDeletedView ? (
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {lead.deletedAt
+                        ? new Date(lead.deletedAt).toLocaleDateString()
+                        : 'Deleted'}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      {formatFollowUpDate(lead.nextFollowUpDate)}
+                    </span>
+                  )}
                 </td>
 
-                {/* =================================================
-                    ACTIONS
-                        Followup is intentionally FIRST and highlighted
-                ================================================= */}
+                {/* ACTIONS */}
                 <td
                   className="py-3.5 px-4 text-right"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-end gap-1.5">
 
-                    {/* -------------------------------------------------
-                        FOLLOWUP - PRIMARY ACTION
-                    ------------------------------------------------- */}
-                    <button
-                      type="button"
-                      onClick={() => setFollowupLead(lead)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600 shadow-sm hover:shadow transition-all font-semibold text-xs whitespace-nowrap"
-                      title="Add Follow-up"
-                    >
-                      <Calendar className="w-4 h-4" />
-                      <span>Followup</span>
-                    </button>
+                    {isDeletedView ? (
+                      <>
+                        {/* RESTORE ACTION */}
+                        <button
+                          type="button"
+                          onClick={() => onRestore && onRestore(lead._id)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 shadow-xs transition-all font-semibold text-xs whitespace-nowrap"
+                          title="Restore Lead"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restore</span>
+                        </button>
 
-                    {/* -------------------------------------------------
-                        CALL
-                    ------------------------------------------------- */}
-                    <a
-                      href={telLink(lead.mobileNumber)}
-                      className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
-                      title="Call"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Phone className="w-4 h-4" />
-                    </a>
+                        {/* VIEW DETAILS */}
+                        <button
+                          type="button"
+                          onClick={() => handleRowClick(lead._id)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
 
-                    {/* -------------------------------------------------
-                        WHATSAPP
-                    ------------------------------------------------- */}
-                    <a
-                      href={whatsappLink(lead.mobileNumber)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                      title="WhatsApp"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </a>
+                        {/* PERMANENT DELETE (ADMIN ONLY) */}
+                        {user?.role === 'admin' && (
+                          <button
+                            type="button"
+                            onClick={() => setPermanentDeleteId(lead._id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-xs font-semibold"
+                            title="Permanently Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Permanently</span>
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {/* FOLLOWUP */}
+                        <button
+                          type="button"
+                          onClick={() => setFollowupLead(lead)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600 shadow-sm hover:shadow transition-all font-semibold text-xs whitespace-nowrap"
+                          title="Add Follow-up"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>Followup</span>
+                        </button>
 
-                    {/* -------------------------------------------------
-                        VIEW DETAILS
-                    ------------------------------------------------- */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleRowClick(lead._id)
-                      }
-                      className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                        {/* CALL */}
+                        <a
+                          href={telLink(lead.mobileNumber)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                          title="Call"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
 
-                    {/* -------------------------------------------------
-                        DELETE - ADMIN ONLY
-                    ------------------------------------------------- */}
-                    {user?.role === 'admin' && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDeleteId(lead._id)
-                        }
-                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Delete Lead"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* WHATSAPP */}
+                        <a
+                          href={whatsappLink(lead.mobileNumber)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                          title="WhatsApp"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+
+                        {/* VIEW DETAILS */}
+                        <button
+                          type="button"
+                          onClick={() => handleRowClick(lead._id)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+
+                        {/* SOFT DELETE - AVAILABLE FOR EVERYONE */}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteId(lead._id)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
 
                   </div>
@@ -287,13 +323,10 @@ export default function LeadTable({
             onClick={() => handleRowClick(lead._id)}
           >
 
-            {/* -----------------------------------------------------
-                CUSTOMER + STATUS
-            ----------------------------------------------------- */}
+            {/* CUSTOMER + STATUS */}
             <div className="flex items-start justify-between gap-2">
 
               <div className="min-w-0">
-
                 <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
                   {lead.customerName ||
                     lead.companyName ||
@@ -303,7 +336,6 @@ export default function LeadTable({
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {lead.mobileNumber}
                 </p>
-
               </div>
 
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -313,9 +345,7 @@ export default function LeadTable({
 
             </div>
 
-            {/* -----------------------------------------------------
-                VEHICLE / PART
-            ----------------------------------------------------- */}
+            {/* VEHICLE / PART */}
             {(lead.partRequired || lead.vehicleModel) && (
               <div className="bg-gray-50 dark:bg-gray-700/40 rounded-xl px-3 py-2 text-xs">
 
@@ -340,9 +370,7 @@ export default function LeadTable({
               </div>
             )}
 
-            {/* -----------------------------------------------------
-                ASSIGNED TO + ACTIONS
-            ----------------------------------------------------- */}
+            {/* ASSIGNED TO + ACTIONS */}
             <div className="space-y-2 pt-1">
 
               <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -360,48 +388,70 @@ export default function LeadTable({
                 onClick={(e) => e.stopPropagation()}
               >
 
-                {/* -------------------------------------------------
-                    FOLLOW-UP - PRIMARY ACTION
-                ------------------------------------------------- */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFollowupLead(lead)
-                  }
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-500 dark:hover:bg-amber-600 shadow-sm transition-all text-xs font-semibold"
-                  title="Add Follow-up"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Followup</span>
-                </button>
+                {isDeletedView ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onRestore && onRestore(lead._id)}
+                      className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-semibold"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restore</span>
+                    </button>
 
-                {/* -------------------------------------------------
-                    CALL
-                ------------------------------------------------- */}
-                <a
-                  href={telLink(lead.mobileNumber)}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold"
-                  title="Call"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  Call
-                </a>
+                    {user?.role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => setPermanentDeleteId(lead._id)}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Permanently</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setFollowupLead(lead)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 shadow-sm text-xs font-semibold"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Followup</span>
+                    </button>
 
-                {/* -------------------------------------------------
-                    WHATSAPP
-                ------------------------------------------------- */}
-                <a
-                  href={whatsappLink(lead.mobileNumber)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold"
-                  title="WhatsApp"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  WA
-                </a>
+                    <a
+                      href={telLink(lead.mobileNumber)}
+                      className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-semibold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Call
+                    </a>
+
+                    <a
+                      href={whatsappLink(lead.mobileNumber)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      WA
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(lead._id)}
+                      className="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs font-semibold"
+                      title="Delete Lead"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </>
+                )}
 
               </div>
             </div>
@@ -412,16 +462,30 @@ export default function LeadTable({
       </div>
 
       {/* =========================================================
-          DELETE CONFIRMATION
+          SOFT DELETE CONFIRMATION
       ========================================================= */}
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDeleteConfirm}
         loading={isDeleting}
-        title="Delete Lead?"
-        message="This will permanently delete this lead and its full history. This action cannot be undone."
-        confirmText="Delete Lead"
+        title="Move to Deleted Leads?"
+        message="This lead will be moved to the Deleted Leads tab. You can view or restore it anytime."
+        confirmText="Move to Deleted"
+        type="danger"
+      />
+
+      {/* =========================================================
+          PERMANENT DELETE CONFIRMATION (ADMIN ONLY)
+      ========================================================= */}
+      <ConfirmDialog
+        isOpen={!!permanentDeleteId}
+        onClose={() => setPermanentDeleteId(null)}
+        onConfirm={handlePermanentDeleteConfirm}
+        loading={isDeleting}
+        title="Permanently Delete Lead?"
+        message="This will PERMANENTLY remove this lead and its entire history from the database. This action CANNOT be undone."
+        confirmText="Delete Permanently"
         type="danger"
       />
 

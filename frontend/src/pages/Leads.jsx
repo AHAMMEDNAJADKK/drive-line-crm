@@ -13,6 +13,7 @@ import {
   getLeadsApi,
   createLeadApi,
   deleteLeadApi,
+  restoreLeadApi,
   updateLeadStatusApi,
   exportExcelApi,
   exportPDFApi,
@@ -37,7 +38,7 @@ import toast from 'react-hot-toast';
 
 const PAGE_LIMIT = 25;
 
-export default function Leads({ isClosed = false }) {
+export default function Leads({ isClosed = false, isDeletedView = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,7 +73,9 @@ export default function Leads({ isClosed = false }) {
   const buildQuery = useCallback(() => {
     const q = {};
 
-    if (isClosed) {
+    if (isDeletedView) {
+      q.scope = 'deleted';
+    } else if (isClosed) {
       q.scope = 'closed';
     }
 
@@ -116,7 +119,7 @@ export default function Leads({ isClosed = false }) {
     q.limit = PAGE_LIMIT;
 
     return q;
-  }, [searchParams, isClosed]);
+  }, [searchParams, isClosed, isDeletedView]);
 
   // =========================================================
   // LOAD LEADS
@@ -258,20 +261,50 @@ export default function Leads({ isClosed = false }) {
   };
 
   // =========================================================
-  // DELETE
+  // DELETE & RESTORE
   // =========================================================
 
   const handleDelete = async (id) => {
     try {
       await deleteLeadApi(id);
 
-      toast.success('Lead deleted');
+      toast.success('Lead moved to Deleted Leads');
 
       loadLeads();
     } catch (err) {
       toast.error(
         err.response?.data?.message ||
           'Delete failed'
+      );
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    try {
+      await deleteLeadApi(id, { permanent: true });
+
+      toast.success('Lead permanently deleted');
+
+      loadLeads();
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          'Permanent delete failed'
+      );
+    }
+  };
+
+  const handleRestore = async (id) => {
+    try {
+      await restoreLeadApi(id);
+
+      toast.success('Lead restored successfully');
+
+      loadLeads();
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          'Restore failed'
       );
     }
   };
@@ -356,16 +389,16 @@ export default function Leads({ isClosed = false }) {
 
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {isClosed ? 'Closed Leads' : 'Leads'}
+            {isDeletedView ? 'Deleted Leads' : isClosed ? 'Closed Leads' : 'Leads'}
           </h1>
 
           {!loading && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {pagination.total}{' '}
               {pagination.total === 1
-                ? isClosed ? 'closed lead' : 'lead'
-                : isClosed ? 'closed leads' : 'leads'}{' '}
-              total {isClosed ? '(Converted & Lost past 24h)' : ''}
+                ? isDeletedView ? 'deleted lead' : isClosed ? 'closed lead' : 'lead'
+                : isDeletedView ? 'deleted leads' : isClosed ? 'closed leads' : 'leads'}{' '}
+              {isDeletedView ? 'in recycle bin' : 'total'} {isClosed ? '(Converted & Lost)' : ''}
             </p>
           )}
         </div>
@@ -376,7 +409,7 @@ export default function Leads({ isClosed = false }) {
               NEW ADD LEAD BUTTON (Only for Active Leads)
           ================================================= */}
 
-          {!isClosed && (
+          {!isClosed && !isDeletedView && (
             <button
               type="button"
               onClick={() =>
@@ -392,7 +425,7 @@ export default function Leads({ isClosed = false }) {
 
           {/* IMPORT (Only for Active Leads) */}
 
-          {!isClosed && user?.role !== 'employee' && (
+          {!isClosed && !isDeletedView && user?.role !== 'employee' && (
             <button
               type="button"
               onClick={() =>
@@ -613,6 +646,7 @@ export default function Leads({ isClosed = false }) {
           <LeadTable
             leads={leads}
             user={user}
+            isDeletedView={isDeletedView}
             onView={(id) =>
               navigate(
                 `/leads/${id}`
@@ -620,6 +654,12 @@ export default function Leads({ isClosed = false }) {
             }
             onDelete={
               handleDelete
+            }
+            onPermanentDelete={
+              handlePermanentDelete
+            }
+            onRestore={
+              handleRestore
             }
             onStatusChange={
               handleStatusChange
