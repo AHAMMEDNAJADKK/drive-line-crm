@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getHrDashboardApi } from '../services/hrApi';
+import { useAuth } from '../context/AuthContext';
 import { LoadingState, ErrorState } from '../components/common/States';
 import HrWorkforceChart from '../components/dashboard/HrWorkforceChart';
 
 export default function HRDashboard() {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -23,8 +25,17 @@ export default function HRDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">HR Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Employee overview and workforce status.</p>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">HR Dashboard</h1>
+          {user?.branchId && (
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+              {user.branchId.name || user.branchId.code}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {user?.branchId ? `${user.branchId.name} workforce overview and status.` : 'Employee overview and workforce status.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

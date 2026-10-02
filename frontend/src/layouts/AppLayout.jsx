@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Plus,
   Car,
-  CheckCircle2
+  CheckCircle2,
+  Truck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -71,9 +72,14 @@ export default function AppLayout() {
         { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/leads', icon: UserSquare2, label: 'Leads' },
         { to: '/closed-leads', icon: CheckCircle2, label: 'Closed Leads' },
-        ...(user?.role === 'admin' ? [{ to: '/employees', icon: Users, label: 'Employees' }] : []),
+        ...(user?.role === 'admin'
+          ? [
+              { to: '/branches', icon: Building2, label: 'Branches' },
+              { to: '/employees', icon: Users, label: 'Employees' }
+            ]
+          : []),
         { to: '/customers', icon: UserRound, label: 'Customers' },
-        { to: '/suppliers', icon: Building2, label: 'Suppliers' }
+        { to: '/suppliers', icon: Truck, label: 'Suppliers' }
       ];
 
   const navLinkClass = ({ isActive }) =>
@@ -84,6 +90,10 @@ export default function AppLayout() {
     }`;
 
   const getPageLabel = () => {
+    if (location.pathname.startsWith('/branches')) {
+      return 'Branches';
+    }
+
     const customerMatch = location.pathname.startsWith('/customers');
 
     if (customerMatch) {
@@ -183,9 +193,18 @@ export default function AppLayout() {
               {user?.name}
             </p>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-              {user?.role}
-            </p>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
+              <span>{user?.role}</span>
+              {user?.branchId ? (
+                <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 truncate">
+                  • {user.branchId.name || user.branchId.code}
+                </span>
+              ) : user?.role === 'admin' ? (
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
+                  • All Branches
+                </span>
+              ) : null}
+            </div>
           </div>}
         </NavLink>
 
@@ -267,6 +286,19 @@ export default function AppLayout() {
 
               {/* HR-only Passport Notification Bell */}
               <NotificationBell />
+
+              {/* Branch indicator */}
+              {user?.branchId ? (
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{user.branchId.code || user.branchId.name}</span>
+                </span>
+              ) : user?.role === 'admin' ? (
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>All Branches</span>
+                </span>
+              ) : null}
 
               <button
                 type="button"

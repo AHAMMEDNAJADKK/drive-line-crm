@@ -28,6 +28,7 @@ import ImportModal from '../components/leads/ImportModal';
 
 import SearchInput from '../components/common/SearchInput';
 import Pagination from '../components/common/Pagination';
+import BranchSelector from '../components/common/BranchSelector';
 import {
   LoadingState,
   ErrorState,
@@ -113,6 +114,10 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
 
     if (searchParams.get('dateTo')) {
       q.dateTo = searchParams.get('dateTo');
+    }
+
+    if (searchParams.get('branchId')) {
+      q.branchId = searchParams.get('branchId');
     }
 
     q.page = searchParams.get('page') || 1;
@@ -545,6 +550,17 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
             placeholder="Search mobile, name, part, vehicle…"
           />
         </div>
+
+        {user?.role === 'admin' && (
+          <div className="w-48 sm:w-56 shrink-0">
+            <BranchSelector
+              value={searchParams.get('branchId') || ''}
+              onChange={(val) => setParam('branchId', val)}
+              showAll={true}
+              allLabel="All Branches"
+            />
+          </div>
+        )}
 
         <button
           type="button"

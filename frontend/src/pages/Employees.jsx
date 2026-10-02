@@ -11,6 +11,7 @@ import EmployeeForm from '../components/employees/EmployeeForm';
 import SearchInput from '../components/common/SearchInput';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
+import BranchSelector from '../components/common/BranchSelector';
 import { LoadingState, ErrorState, EmptyState } from '../components/common/States';
 import toast from 'react-hot-toast';
 
@@ -23,6 +24,7 @@ export default function Employees() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,6 +46,7 @@ export default function Employees() {
         search: search || undefined,
         role: roleFilter || undefined,
         status: statusFilter || undefined,
+        branchId: branchFilter || undefined,
         page,
         limit: 15,
       });
@@ -64,7 +67,7 @@ export default function Employees() {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, statusFilter, page]);
+  }, [search, roleFilter, statusFilter, branchFilter, page]);
 
   useEffect(() => {
     fetchEmployees();
@@ -184,6 +187,20 @@ export default function Employees() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
+
+        {user?.role === 'admin' && (
+          <div className="w-52 shrink-0">
+            <BranchSelector
+              value={branchFilter}
+              onChange={(val) => {
+                setBranchFilter(val);
+                setPage(1);
+              }}
+              showAll={true}
+              allLabel="All Branches"
+            />
+          </div>
+        )}
       </div>
 
       {/* Main Content */}

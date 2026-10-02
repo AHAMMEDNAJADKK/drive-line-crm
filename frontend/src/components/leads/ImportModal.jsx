@@ -18,6 +18,8 @@ import {
   downloadImportTemplateApi,
   downloadImportErrorsApi,
 } from '../../services/importApi';
+import { getActiveBranchesListApi } from '../../services/branchApi';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const CRM_FIELDS = [
@@ -43,6 +45,7 @@ const CRM_FIELDS = [
 ];
 
 export default function ImportModal({ isOpen, onClose, onSuccess }) {
+  const { user } = useAuth();
   // Wizard steps: 1 (Upload), 2 (Map Fields), 3 (Options & Preview), 4 (Result)
   const [step, setStep] = useState(1);
 
@@ -57,8 +60,18 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
 
   // Import options
   const [duplicateHandling, setDuplicateHandling] = useState('skip');
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && user?.role === 'admin') {
+      getActiveBranchesListApi()
+        .then((res) => setBranches(res.data?.data || []))
+        .catch(() => setBranches([]));
+    }
+  }, [isOpen, user?.role]);
 
   const resetWizard = () => {
     setStep(1);
@@ -66,6 +79,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
     setFilePath('');
     setParsedData(null);
     setMapping({});
+    setSelectedBranch('');
     setImportResult(null);
     setUploading(false);
     setImporting(false);
@@ -172,7 +186,10 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
       const res = await executeImportApi({
         filePath,
         mapping,
-        options: { duplicateHandling },
+        options: {
+          duplicateHandling,
+          branchId: user?.role === 'admin' ? (selectedBranch || undefined) : undefined,
+        },
       });
 
       const result = res.data.data;
@@ -658,6 +675,31 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
                 ))}
               </div>
             </div>
+
+            {user?.role === 'admin' && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700/60 p-4 bg-gray-50/50 dark:bg-gray-800/40 space-y-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Assign Leads to Branch
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Assign all imported rows directly to a specific branch.
+                  </p>
+                </div>
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">— Unassigned (No Branch) —</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 dark:border-gray-700/60 sm:flex-row sm:items-center sm:justify-between">
               <button

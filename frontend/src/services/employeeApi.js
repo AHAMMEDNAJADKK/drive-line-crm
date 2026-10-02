@@ -22,8 +22,10 @@ export const toggleEmployeeStatusApi = (id, status) =>
 export const resetEmployeePasswordApi = (id, newPassword) =>
   api.patch(`/employees/${id}/reset-password`, { newPassword });
 
-export const getActiveEmployeesApi = () =>
-  api.get('/employees/active-list');
+export const getActiveEmployeesApi = (params) =>
+  api.get('/employees/active-list', { params });
+
+export const getActiveEmployeesListApi = getActiveEmployeesApi;
 
 // Vehicle Specializations
 export const getEmployeeVehicleSpecializationsApi = () =>

@@ -112,6 +112,12 @@ export default function LeadTable({
                 Assigned To
               </th>
 
+              {user?.role === 'admin' && (
+                <th className="py-3.5 px-4">
+                  Branch
+                </th>
+              )}
+
               <th className="py-3.5 px-4">
                 {isDeletedView ? 'Deleted Date' : 'Next Follow-up'}
               </th>
@@ -186,6 +192,21 @@ export default function LeadTable({
                     )}
                   </p>
                 </td>
+
+                {/* BRANCH (ADMIN ONLY) */}
+                {user?.role === 'admin' && (
+                  <td className="py-3.5 px-4">
+                    {lead.branchId ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                        {lead.branchId.code || lead.branchId.name}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">
+                        Unassigned
+                      </span>
+                    )}
+                  </td>
+                )}
 
                 {/* NEXT FOLLOW-UP / DELETED DATE */}
                 <td className="py-3.5 px-4">
@@ -340,7 +361,14 @@ export default function LeadTable({
 
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <StatusBadge status={lead.status} />
-                <PriorityBadge priority={lead.priority} />
+                <div className="flex items-center gap-1">
+                  <PriorityBadge priority={lead.priority} />
+                  {lead.branchId && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      {lead.branchId.code || lead.branchId.name}
+                    </span>
+                  )}
+                </div>
               </div>
 
             </div>

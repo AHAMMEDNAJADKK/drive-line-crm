@@ -131,7 +131,7 @@ export default function LeadDetail() {
   if (error) return <ErrorState message={error} onRetry={fetchLeadData} />;
   if (!lead) return null;
 
-  const canAssign = user?.role === 'admin';
+  const canAssign = user?.role === 'admin' || user?.role === 'hr';
   const canSoftDelete = true;
   const canPermanentDelete = user?.role === 'admin';
 
@@ -147,12 +147,18 @@ export default function LeadDetail() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {lead.customerName || lead.mobileNumber}
               </h1>
               <StatusBadge status={lead.status} />
               <PriorityBadge priority={lead.priority} />
+              {lead.branchId && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                  <Building className="w-3 h-3 mr-1" />
+                  {lead.branchId.name || lead.branchId.code}
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Created {formatDateTime(lead.createdAt)}
