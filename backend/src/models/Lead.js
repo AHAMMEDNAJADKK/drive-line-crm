@@ -242,6 +242,13 @@ const leadSchema = new mongoose.Schema(
       index: true,
     },
 
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
+
     nextFollowUpDate: {
       type: Date,
       default: null,
@@ -403,6 +410,26 @@ leadSchema.index({
 
 leadSchema.index({
   trnNumber: 1,
+});
+
+leadSchema.index({
+  branchId: 1,
+  createdAt: -1,
+});
+
+leadSchema.index({
+  branchId: 1,
+  status: 1,
+});
+
+leadSchema.index({
+  branchId: 1,
+  assignedTo: 1,
+});
+
+leadSchema.index({
+  branchId: 1,
+  priority: 1,
 });
 
 const Lead = mongoose.model(

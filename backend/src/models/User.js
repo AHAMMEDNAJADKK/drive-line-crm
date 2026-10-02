@@ -53,6 +53,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true
+    },
     position: {
       type: String,
       trim: true,
@@ -114,6 +120,9 @@ userSchema.methods.toJSON = function () {
   delete obj.password;
   return obj;
 };
+
+userSchema.index({ branchId: 1, role: 1 });
+userSchema.index({ branchId: 1, status: 1 });
 
 const User = mongoose.model('User', userSchema);
 

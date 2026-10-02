@@ -8,8 +8,9 @@ const {
   getCanonicalPhoneKey,
   isValidPhoneNumber
 } = require('../utils/phoneUtils');
-const { isEmployee } = require('../utils/roles');
-const { assertEmployeeLeadAccess } = require('../utils/leadAccess');
+const { isEmployee, isAdmin, isHrStaff } = require('../utils/roles');
+const { assertLeadAccess, assertEmployeeLeadAccess } = require('../utils/leadAccess');
+const { getBranchFilter, getUserBranchId, assertBranchAccess } = require('../utils/branchAccess');
 const {
   normalizeLeadStatus,
   isWritableLeadStatus,
@@ -95,6 +96,10 @@ const checkDuplicate = async (mobileNumber) => {
 const buildLeadFilterQuery = (user, filters = {}) => {
   const query = {};
   const now = new Date();
+
+  // 0a. Branch isolation & scoping
+  const branchFilter = getBranchFilter(user, filters.branchId || filters.branch);
+  Object.assign(query, branchFilter);
 
   // 0. Deleted scope handling
   const isDeletedScope =
@@ -361,6 +366,35 @@ const createLead = async (leadData, currentUser) => {
     assignee = currentUser._id;
   }
 
+  // Resolve branch ID safely and securely
+  let finalBranchId = null;
+
+  if (isAdmin(currentUser)) {
+    if (leadData.branchId) {
+      finalBranchId = leadData.branchId;
+    } else if (assignee && assignee.toString() !== currentUser._id.toString()) {
+      const assignedUser = await User.findById(assignee).select('branchId');
+      if (assignedUser && assignedUser.branchId) {
+        finalBranchId = assignedUser.branchId;
+      }
+    }
+  } else {
+    // HR and Employee MUST use their assigned branch; never trust frontend input!
+    const userBranch = getUserBranchId(currentUser);
+    if (!userBranch) {
+      throw new Error('Your account is not assigned to a branch. Please contact an administrator.');
+    }
+    finalBranchId = userBranch;
+
+    // If HR assigns to someone, verify that user belongs to the same branch
+    if (isHrStaff(currentUser) && assignee && assignee.toString() !== currentUser._id.toString()) {
+      const assignedUser = await User.findById(assignee).select('branchId');
+      if (!assignedUser || !assignedUser.branchId || assignedUser.branchId.toString() !== userBranch.toString()) {
+        throw new Error('Cannot assign leads to staff outside your branch.');
+      }
+    }
+  }
+
   let initialStatus = status || 'New';
   if (initialStatus) {
     if (!isWritableLeadStatus(initialStatus)) {
@@ -485,6 +519,9 @@ const createLead = async (leadData, currentUser) => {
     assignedTo:
       assignee,
 
+    branchId:
+      finalBranchId,
+
     nextFollowUpDate:
       nextFollowUpDate
         ? new Date(nextFollowUpDate)
@@ -607,6 +644,7 @@ const listLeads = async (
   const [leads, total] =
     await Promise.all([
       Lead.find(query)
+        .populate('branchId', 'name code')
         .populate(
           'assignedTo',
           'name email employeeId phone vehicleSpecialization'
@@ -661,6 +699,7 @@ const getLeadById = async (
 ) => {
   const lead =
     await Lead.findById(id)
+      .populate('branchId', 'name code address phone')
       .populate(
         'assignedTo',
         'name email employeeId phone vehicleSpecialization'
@@ -708,6 +747,11 @@ const updateLead = async (
     lead.assignedTo
       ? lead.assignedTo.toString()
       : null;
+
+  // Branch updating is exclusively restricted to Admin
+  if (updateData.branchId !== undefined && isAdmin(currentUser)) {
+    lead.branchId = updateData.branchId || null;
+  }
 
   // Phone
   if (
@@ -1236,6 +1280,20 @@ const assignLead = async (
     throw new Error(
       'Lead not found'
     );
+  }
+
+  assertLeadAccess(lead, currentUser, 'reassign');
+
+  if (assignedToUserId) {
+    const targetUser = await User.findById(assignedToUserId).select('branchId name');
+    if (!targetUser) {
+      throw new Error('Assignee user not found');
+    }
+    if (isHrStaff(currentUser)) {
+      if (!targetUser.branchId || targetUser.branchId.toString() !== (lead.branchId ? lead.branchId.toString() : '')) {
+        throw new Error('HR can only assign leads to employees in their own branch');
+      }
+    }
   }
 
   const previousAssignee =

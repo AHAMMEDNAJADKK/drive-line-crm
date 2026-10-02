@@ -1,4 +1,5 @@
-const { isEmployee } = require('./roles');
+const { isEmployee, isAdmin, isHrStaff } = require('./roles');
+const { assertBranchAccess } = require('./branchAccess');
 
 const assignedToId = (lead) => {
   if (!lead || !lead.assignedTo) return null;
@@ -15,21 +16,41 @@ const employeeOwnsLead = (lead, user) => {
 };
 
 /**
- * Employees may only access leads assigned to them.
- * Admin keeps unrestricted lead access; employees are row-scoped.
+ * Access control for a lead:
+ * 1. Admin has access across all branches.
+ * 2. HR has access only to leads within their assigned branch.
+ * 3. Employees have access only to leads within their assigned branch that are assigned to them.
  */
-const assertEmployeeLeadAccess = (lead, user, action = 'view') => {
-  if (!isEmployee(user)) return;
-
-  if (!employeeOwnsLead(lead, user)) {
-    const error = new Error(`Unauthorized to ${action} this lead`);
-    error.statusCode = 403;
+const assertLeadAccess = (lead, user, action = 'view') => {
+  if (!lead || !user) {
+    const error = new Error('Lead or user information missing');
+    error.statusCode = 400;
     throw error;
   }
+
+  // Branch level isolation check
+  assertBranchAccess(lead.branchId, user, action);
+
+  // Employee row-level assignment check
+  if (isEmployee(user)) {
+    if (!employeeOwnsLead(lead, user)) {
+      const error = new Error(`Unauthorized to ${action} this lead`);
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+};
+
+/**
+ * Backward compatible alias for assertEmployeeLeadAccess
+ */
+const assertEmployeeLeadAccess = (lead, user, action = 'view') => {
+  return assertLeadAccess(lead, user, action);
 };
 
 module.exports = {
   assignedToId,
   employeeOwnsLead,
+  assertLeadAccess,
   assertEmployeeLeadAccess
 };

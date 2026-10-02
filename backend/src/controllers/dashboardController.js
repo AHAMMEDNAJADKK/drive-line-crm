@@ -3,7 +3,7 @@ const { ensurePassportExpiryNotifications } = require('../services/notificationS
 
 const getDashboard = async (req, res, next) => {
   try {
-    const data = await dashboardService.getDashboardStats(req.user);
+    const data = await dashboardService.getDashboardStats(req.user, req.query);
     res.json({ success: true, data });
   } catch (err) { next(err); }
 };
@@ -11,7 +11,7 @@ const getDashboard = async (req, res, next) => {
 const getHrDashboard = async (req, res, next) => {
   try {
     await ensurePassportExpiryNotifications();
-    const data = await dashboardService.getHrDashboard();
+    const data = await dashboardService.getHrDashboard(req.user, req.query);
     res.json({ success: true, data });
   } catch (err) {
     next(err);

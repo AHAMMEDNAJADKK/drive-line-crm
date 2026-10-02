@@ -1,16 +1,18 @@
 const Lead = require('../models/Lead');
 const User = require('../models/User');
 const LeadFollowup = require('../models/LeadFollowup');
-const { isEmployee } = require('../utils/roles');
+const { isEmployee, isAdmin } = require('../utils/roles');
 const { isPassportExpiryDue } = require('../utils/dates');
+const { getBranchFilter } = require('../utils/branchAccess');
 
-const getDashboardStats = async (currentUser) => {
+const getDashboardStats = async (currentUser, queryParams = {}) => {
   const employeeUser = isEmployee(currentUser);
+  const branchFilter = getBranchFilter(currentUser, queryParams.branchId || queryParams.branch);
 
-  // Employees see only leads assigned to them
+  // Employees see only leads assigned to them within their branch
   const baseQuery = employeeUser
-    ? { assignedTo: currentUser._id }
-    : {};
+    ? { ...branchFilter, assignedTo: currentUser._id, isDeleted: { $ne: true } }
+    : { ...branchFilter, isDeleted: { $ne: true } };
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -56,6 +58,7 @@ const getDashboardStats = async (currentUser) => {
     nextFollowUpDate: { $gte: startOfToday, $lte: endOfToday },
     status: { $nin: ['Converted', 'Lost'] }
   })
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name phone employeeId')
     .sort({ nextFollowUpDate: 1 })
     .limit(10)
@@ -67,6 +70,7 @@ const getDashboardStats = async (currentUser) => {
     nextFollowUpDate: { $lt: startOfToday, $ne: null },
     status: { $nin: ['Converted', 'Lost'] }
   })
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name phone employeeId')
     .sort({ nextFollowUpDate: 1 })
     .limit(10)
@@ -74,6 +78,7 @@ const getDashboardStats = async (currentUser) => {
 
   // Fetch Recent Leads (limit 6)
   const recentLeads = await Lead.find(baseQuery)
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name employeeId')
     .sort({ createdAt: -1 })
     .limit(6)
@@ -89,15 +94,29 @@ const getDashboardStats = async (currentUser) => {
     { status: 'Lost', count: lostLeads, color: '#EF4444' }
   ];
 
-  // Employee Performance (Admin only; employee data is not exposed to employees)
+  // Employee Performance (Admin and HR only; employees see nothing here)
   let employeePerformance = [];
   if (!employeeUser) {
-    const employees = await User.find({ status: 'active' }).select('_id name employeeId role').lean();
+    const empUserFilter = { status: 'active', role: 'employee' };
+    if (!isAdmin(currentUser)) {
+      // HR sees only employees belonging to their branch
+      if (currentUser.branchId) {
+        empUserFilter.branchId = currentUser.branchId._id || currentUser.branchId;
+      }
+    } else if (queryParams.branchId && queryParams.branchId !== 'all') {
+      if (queryParams.branchId === 'unassigned') {
+        empUserFilter.$or = [{ branchId: null }, { branchId: { $exists: false } }];
+      } else {
+        empUserFilter.branchId = queryParams.branchId;
+      }
+    }
+
+    const employees = await User.find(empUserFilter).select('_id name employeeId role').lean();
     const empPerformancePromises = employees.map(async (emp) => {
       const [empTotal, empConverted, empLost, empFollowups] = await Promise.all([
-        Lead.countDocuments({ assignedTo: emp._id }),
-        Lead.countDocuments({ assignedTo: emp._id, status: 'Converted' }),
-        Lead.countDocuments({ assignedTo: emp._id, status: 'Lost' }),
+        Lead.countDocuments({ assignedTo: emp._id, isDeleted: { $ne: true } }),
+        Lead.countDocuments({ assignedTo: emp._id, status: 'Converted', isDeleted: { $ne: true } }),
+        Lead.countDocuments({ assignedTo: emp._id, status: 'Lost', isDeleted: { $ne: true } }),
         LeadFollowup.countDocuments({ createdBy: emp._id })
       ]);
       const empConvRate = empTotal > 0 ? ((empConverted / empTotal) * 100).toFixed(1) : '0.0';
@@ -202,10 +221,13 @@ const getDashboardStats = async (currentUser) => {
   };
 };
 
-const getHrDashboard = async () => {
-  const employees = await User.find({})
+const getHrDashboard = async (currentUser, queryParams = {}) => {
+  const branchFilter = getBranchFilter(currentUser, queryParams?.branchId || queryParams?.branch);
+
+  const employees = await User.find(branchFilter)
+    .populate('branchId', 'name code')
     .select(
-      'name email phone employeeId role status vehicleSpecialization passportNumber passportExpireDate lastLogin createdAt'
+      'name email phone employeeId role status vehicleSpecialization passportNumber passportExpireDate lastLogin createdAt branchId'
     )
     .sort({ name: 1 })
     .lean();

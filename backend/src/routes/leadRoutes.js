@@ -6,7 +6,7 @@ const { addFollowup, getFollowups } = require('../controllers/followupController
 const importExportCtrl = require('../controllers/importExportController');
 
 router.use(authenticate);
-router.use(authorize('admin', 'employee'));
+router.use(authorize('admin', 'hr', 'employee'));
 
 // Duplicate check (quick, called in real time)
 router.get('/check-duplicate', ctrl.checkDuplicate);
@@ -24,7 +24,7 @@ router.delete('/:id', ctrl.deleteLead);
 
 // Lead-specific actions
 router.patch('/:id/status', ctrl.updateStatus);
-router.patch('/:id/assign', authorize('admin'), ctrl.assignLead);
+router.patch('/:id/assign', authorize('admin', 'hr'), ctrl.assignLead);
 router.patch('/:id/restore', ctrl.restoreLead);
 
 // Follow-ups
