@@ -126,12 +126,18 @@ const buildLeadFilterQuery = (user, filters = {}) => {
     filters.isClosed === 'true' ||
     filters.isClosed === true;
 
+  const isAllScope =
+    filters.scope === 'all' ||
+    filters.scope === 'any';
+
   if (filters.status) {
     // Explicit status filter requested (e.g. Converted, Lost, New, Followup, etc.)
     query.status = statusFilterQuery(filters.status);
   } else if (isClosed) {
     // Default closed view: all Converted and Lost leads
     query.status = { $in: CLOSED_LEAD_STATUSES };
+  } else if (isAllScope) {
+    // Return all statuses (both active and closed leads)
   } else if (!isDeletedScope) {
     // Default active view: non-closed statuses
     query.status = { $nin: CLOSED_LEAD_STATUSES };

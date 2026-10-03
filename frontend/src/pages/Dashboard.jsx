@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Phone, MessageCircle,
   ChevronRight, BarChart3, Award
 } from 'lucide-react';
-import { getDashboardApi } from '../services/dashboardApi';
+import { getDashboardApi, getBranchOverviewApi } from '../services/dashboardApi';
 import { useAuth } from '../context/AuthContext';
 import { LoadingState, ErrorState } from '../components/common/States';
 import { formatDate, formatFollowUpDate, whatsappLink, telLink, getInitials } from '../utils/formatters';
@@ -16,6 +16,8 @@ import LeadTrendChart from '../components/dashboard/LeadTrendChart';
 import PartsDemandChart from '../components/dashboard/PartsDemandChart';
 import EmployeePerformanceChart from '../components/dashboard/EmployeePerformanceChart';
 import BranchSelector from '../components/common/BranchSelector';
+import BranchPerformanceOverview from '../components/dashboard/BranchPerformanceOverview';
+import BranchDetailsSection from '../components/dashboard/BranchDetailsSection';
 
 function MetricCard({ label, value, color, icon: Icon, onClick }) {
   return (
@@ -69,7 +71,27 @@ export default function Dashboard() {
 
   const [selectedBranch, setSelectedBranch] = useState('');
 
+  // Admin branch overview analytics
+  const [branchOverview, setBranchOverview] = useState(null);
+  const [branchOverviewLoading, setBranchOverviewLoading] = useState(false);
+  const [branchOverviewError, setBranchOverviewError] = useState('');
+
   const isEmployee = user?.role === 'employee';
+  const isAdmin = user?.role === 'admin';
+
+  const loadBranchOverview = async () => {
+    if (!isAdmin) return;
+    setBranchOverviewLoading(true);
+    setBranchOverviewError('');
+    try {
+      const res = await getBranchOverviewApi();
+      setBranchOverview(res.data?.data || null);
+    } catch (err) {
+      setBranchOverviewError(err.response?.data?.message || 'Failed to load branch overview.');
+    } finally {
+      setBranchOverviewLoading(false);
+    }
+  };
 
   const load = async (branchId = selectedBranch) => {
     setLoading(true);
@@ -87,6 +109,12 @@ export default function Dashboard() {
   useEffect(() => {
     load(selectedBranch);
   }, [selectedBranch]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadBranchOverview();
+    }
+  }, [isAdmin]);
 
   if (loading) return <LoadingState message="Loading dashboard…" />;
   if (error) return <ErrorState message={error} onRetry={() => load(selectedBranch)} />;
@@ -170,6 +198,18 @@ export default function Dashboard() {
           color="text-emerald-600 dark:text-emerald-400" icon={CheckCircle2}
           onClick={() => navigate(getLeadsLink('status=Converted'))} />
       </div>
+
+      {/* Admin Dedicated Branch Performance Overview */}
+      {isAdmin && (
+        <BranchPerformanceOverview
+          data={branchOverview}
+          loading={branchOverviewLoading}
+          error={branchOverviewError}
+          onRetry={loadBranchOverview}
+          onSelectBranch={(bId) => setSelectedBranch(bId)}
+          selectedBranch={selectedBranch}
+        />
+      )}
 
       {/* Interactive Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -306,6 +346,18 @@ export default function Dashboard() {
             <PartsDemandChart topPartsDemand={topPartsDemand} topVehiclesDemand={topVehiclesDemand} />
           </div>
         </div>
+      )}
+
+      {/* Final Section: Branch Details (Admin Only) */}
+      {isAdmin && (
+        <BranchDetailsSection
+          data={branchOverview}
+          loading={branchOverviewLoading}
+          error={branchOverviewError}
+          onRetry={loadBranchOverview}
+          onSelectBranch={(bId) => setSelectedBranch(bId)}
+          selectedBranch={selectedBranch}
+        />
       )}
     </div>
   );

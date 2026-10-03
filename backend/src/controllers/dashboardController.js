@@ -18,4 +18,16 @@ const getHrDashboard = async (req, res, next) => {
   }
 };
 
-module.exports = { getDashboard, getHrDashboard };
+const getBranchOverview = async (req, res, next) => {
+  try {
+    const data = await dashboardService.getBranchOverview(req.user, req.query);
+    res.json({ success: true, data });
+  } catch (err) {
+    if (err.statusCode === 403 || err.message?.includes('Forbidden')) {
+      return res.status(403).json({ success: false, message: err.message });
+    }
+    next(err);
+  }
+};
+
+module.exports = { getDashboard, getHrDashboard, getBranchOverview };
