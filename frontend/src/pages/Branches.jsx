@@ -8,13 +8,9 @@ import {
   Edit2,
   Eye,
   Users,
-  UserCheck,
-  Briefcase,
   Phone,
   Mail,
   MapPin,
-  FileSpreadsheet,
-  AlertCircle,
   Loader2
 } from 'lucide-react';
 import {
@@ -126,18 +122,38 @@ export default function Branches() {
   // Submit Add / Edit
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.code.trim()) {
+    const cleanName = formData.name.trim();
+    const cleanCode = formData.code.trim().toUpperCase();
+    const cleanAddress = formData.address.trim();
+    const cleanPhone = formData.phone.trim();
+    const cleanEmail = formData.email.trim().toLowerCase();
+
+    if (!cleanName || !cleanCode) {
       toast.error('Branch name and branch code are required');
       return;
     }
 
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    const payload = {
+      name: cleanName,
+      code: cleanCode,
+      address: cleanAddress,
+      phone: cleanPhone,
+      email: cleanEmail,
+      status: formData.status
+    };
+
     setFormSubmitting(true);
     try {
       if (editingBranch) {
-        await updateBranchApi(editingBranch._id, formData);
+        await updateBranchApi(editingBranch._id, payload);
         toast.success('Branch updated successfully');
       } else {
-        await createBranchApi(formData);
+        await createBranchApi(payload);
         toast.success('Branch created successfully');
       }
       setFormModalOpen(false);
@@ -488,7 +504,7 @@ export default function Branches() {
         title={editingBranch ? 'Edit Branch' : 'Add New Branch'}
         size="md"
       >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+        <form onSubmit={handleFormSubmit} className="space-y-4 p-5 sm:p-6">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
               Branch Name *
@@ -609,7 +625,7 @@ export default function Branches() {
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 p-5 sm:p-6">
             {/* Branch Quick Info */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
@@ -712,7 +728,7 @@ export default function Branches() {
         title={`Assign Staff to ${manageUsersModal.branch?.name || 'Branch'}`}
         size="md"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 p-5 sm:p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Select an employee or HR to assign or transfer to{' '}
             <span className="font-semibold text-gray-900 dark:text-gray-100">

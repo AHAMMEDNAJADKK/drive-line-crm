@@ -285,7 +285,7 @@ export default function Employees() {
         title="Reset Employee Password"
         size="sm"
       >
-        <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+        <form onSubmit={handleResetPasswordSubmit} className="space-y-4 p-5 sm:p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Reset password for <span className="font-semibold text-gray-900 dark:text-gray-100">{selectedForPassword?.name}</span>:
           </p>

@@ -2,7 +2,7 @@ const leadService = require('../services/leadService');
 
 const checkDuplicate = async (req, res) => {
   try {
-    const { mobile } = req.query;
+    const mobile = req.query.mobile || req.query.mobileNumber;
     if (!mobile) return res.status(400).json({ success: false, message: 'Mobile number is required' });
     const existing = await leadService.checkDuplicate(mobile);
     res.json({ success: true, isDuplicate: !!existing, existingLead: existing || null });
@@ -34,7 +34,7 @@ const getLead = async (req, res) => {
     res.json({ success: true, data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -45,7 +45,7 @@ const updateLead = async (req, res) => {
     res.json({ success: true, message: 'Lead updated successfully', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -56,7 +56,7 @@ const updateStatus = async (req, res) => {
     res.json({ success: true, message: 'Lead status updated', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.statusCode === 403 || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -68,7 +68,7 @@ const assignLead = async (req, res) => {
     res.json({ success: true, message: 'Lead assigned successfully', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('authorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('authorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -80,7 +80,7 @@ const deleteLead = async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.statusCode === 403 || err.message.includes('administrators') || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('administrators') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -91,7 +91,7 @@ const restoreLead = async (req, res) => {
     res.json({ success: true, message: 'Lead restored successfully', data: lead });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.statusCode === 403 || err.message.includes('administrators') || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('administrators') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -102,7 +102,7 @@ const getActivity = async (req, res) => {
     res.json({ success: true, data: activities });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.statusCode === 403 || err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };

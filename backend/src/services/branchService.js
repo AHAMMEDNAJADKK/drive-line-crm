@@ -210,12 +210,17 @@ const createBranch = async (data) => {
     managerId = data.managerId;
   }
 
+  const cleanEmail = normalizeString(data.email).toLowerCase();
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    throw new Error('Invalid email format for branch');
+  }
+
   const branch = new Branch({
     name,
     code,
     address: normalizeString(data.address),
     phone: normalizeString(data.phone),
-    email: normalizeString(data.email).toLowerCase(),
+    email: cleanEmail,
     managerId,
     status: data.status === 'inactive' ? 'inactive' : 'active'
   });
@@ -276,7 +281,11 @@ const updateBranch = async (id, data) => {
   }
 
   if (data.email !== undefined) {
-    branch.email = normalizeString(data.email).toLowerCase();
+    const cleanEmail = normalizeString(data.email).toLowerCase();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      throw new Error('Invalid email format for branch');
+    }
+    branch.email = cleanEmail;
   }
 
   if (data.managerId !== undefined) {

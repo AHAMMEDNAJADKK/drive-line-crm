@@ -534,12 +534,14 @@ export default function LeadDetail() {
         title="Edit Lead Information"
         size="lg"
       >
-        <LeadForm
-          initialData={lead}
-          onSubmit={handleUpdateLead}
-          onCancel={() => setEditOpen(false)}
-          loading={savingEdit}
-        />
+        <div className="p-5 sm:p-6">
+          <LeadForm
+            initialData={lead}
+            onSubmit={handleUpdateLead}
+            onCancel={() => setEditOpen(false)}
+            loading={savingEdit}
+          />
+        </div>
       </Modal>
 
       {/* Follow-up Modal */}

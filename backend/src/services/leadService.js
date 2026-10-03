@@ -597,6 +597,7 @@ const createLead = async (leadData, currentUser) => {
 
   const populated =
     await Lead.findById(newLead._id)
+      .populate('branchId', 'name code')
       .populate(
         'assignedTo',
         'name email employeeId phone vehicleSpecialization'
@@ -1001,6 +1002,12 @@ const updateLead = async (
       undefined &&
     !isEmployee(currentUser)
   ) {
+    if (updateData.assignedTo && isHrStaff(currentUser)) {
+      const targetUser = await User.findById(updateData.assignedTo).select('branchId');
+      if (!targetUser || !targetUser.branchId || targetUser.branchId.toString() !== (lead.branchId ? lead.branchId.toString() : '')) {
+        throw new Error('HR can only assign leads to employees in their own branch');
+      }
+    }
     lead.assignedTo =
       updateData.assignedTo ||
       null;
@@ -1114,6 +1121,7 @@ const updateLead = async (
     await Lead.findById(
       lead._id
     )
+      .populate('branchId', 'name code')
       .populate(
         'assignedTo',
         'name email employeeId phone vehicleSpecialization'
@@ -1246,6 +1254,7 @@ const updateLeadStatus = async (
     await Lead.findById(
       lead._id
     )
+      .populate('branchId', 'name code')
       .populate(
         'assignedTo',
         'name email employeeId phone vehicleSpecialization'
@@ -1343,6 +1352,7 @@ const assignLead = async (
     await Lead.findById(
       lead._id
     )
+      .populate('branchId', 'name code')
       .populate(
         'assignedTo',
         'name email employeeId phone vehicleSpecialization'
@@ -1439,7 +1449,17 @@ const restoreLead = async (
     remarks: 'Lead restored from Deleted Leads'
   });
 
-  return lead;
+  return Lead.findById(lead._id)
+    .populate('branchId', 'name code')
+    .populate(
+      'assignedTo',
+      'name email employeeId phone vehicleSpecialization'
+    )
+    .populate(
+      'createdBy',
+      'name employeeId'
+    )
+    .lean();
 };
 
 /**
