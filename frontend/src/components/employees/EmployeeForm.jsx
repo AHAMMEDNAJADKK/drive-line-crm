@@ -6,6 +6,8 @@ import {
   getEmployeeVehicleSpecializationsApi,
   createEmployeeVehicleSpecializationApi
 } from '../../services/employeeApi';
+import { getActiveBranchesListApi } from '../../services/branchApi';
+import { useAuth } from '../../context/AuthContext';
 
 import { Loader2, Plus, X } from 'lucide-react';
 
@@ -28,6 +30,9 @@ export default function EmployeeForm({
   loading = false,
   isEdit = false
 }) {
+  const { user: currentUser } = useAuth();
+  const [branches, setBranches] = useState([]);
+
   const [form, setForm] = useState({
     name: initialData.name || '',
     email: initialData.email || '',
@@ -43,6 +48,7 @@ export default function EmployeeForm({
       : '',
     vehicleSpecialization:
       initialData.vehicleSpecialization || '',
+    branchId: initialData.branchId?._id || initialData.branchId || '',
     branch: initialData.branch || '',
     position: initialData.position || '',
     garageShop: initialData.garageShop || ''
@@ -56,6 +62,14 @@ export default function EmployeeForm({
   );
 
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      getActiveBranchesListApi()
+        .then((res) => setBranches(res.data?.data || []))
+        .catch(() => setBranches([]));
+    }
+  }, [currentUser?.role]);
 
   // Add specialization modal state
   const [showSpecModal, setShowSpecModal] = useState(false);
@@ -269,6 +283,14 @@ export default function EmployeeForm({
     }
 
     if (
+      currentUser?.role === 'admin' &&
+      ['hr', 'employee'].includes(form.role) &&
+      !form.branchId
+    ) {
+      errs.branchId = 'Branch assignment is required for HR and Employee';
+    }
+
+    if (
       !isEdit &&
       (!form.password ||
         form.password.length < 6)
@@ -278,6 +300,20 @@ export default function EmployeeForm({
     }
 
     return errs;
+  };
+
+  const handleBranchChange = (e) => {
+    const bId = e.target.value;
+    const found = branches.find((b) => b._id === bId);
+    setForm((prev) => ({
+      ...prev,
+      branchId: bId,
+      branch: found ? found.name : ''
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      branchId: ''
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -304,6 +340,7 @@ export default function EmployeeForm({
         form.passportExpireDate || null,
       vehicleSpecialization:
         form.vehicleSpecialization || '',
+      branchId: form.branchId || null,
       branch: form.branch.trim(),
       position: form.position.trim(),
       garageShop: form.garageShop.trim()
@@ -506,16 +543,38 @@ export default function EmployeeForm({
             {/* Branch */}
             <div>
               <label className={LABEL_CLASS}>
-                Branch
+                Branch {currentUser?.role === 'admin' && ['hr', 'employee'].includes(form.role) && <span className="text-red-500">*</span>}
               </label>
 
-              <input
-                type="text"
-                value={form.branch}
-                onChange={set('branch')}
-                placeholder="e.g. Malappuram Branch"
-                className={FIELD_CLASS}
-              />
+              {currentUser?.role === 'admin' ? (
+                <select
+                  value={form.branchId || ''}
+                  onChange={handleBranchChange}
+                  className={`${FIELD_CLASS} ${errors.branchId ? 'border-red-500' : ''}`}
+                >
+                  <option value="">
+                    {form.role === 'admin' ? '— All Branches / None —' : '— Select Branch —'}
+                  </option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  disabled
+                  value={form.branch || (currentUser?.branchId?.name || 'Assigned Branch')}
+                  className={`${FIELD_CLASS} bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed`}
+                />
+              )}
+
+              {errors.branchId && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.branchId}
+                </p>
+              )}
             </div>
 
             {/* Garage / Shop */}

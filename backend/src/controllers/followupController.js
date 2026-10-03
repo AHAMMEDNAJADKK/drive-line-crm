@@ -6,7 +6,7 @@ const addFollowup = async (req, res) => {
     res.status(201).json({ success: true, message: 'Follow-up recorded successfully', data: followup });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -17,7 +17,7 @@ const getFollowups = async (req, res) => {
     res.json({ success: true, data: followups });
   } catch (err) {
     if (err.message === 'Lead not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
 };

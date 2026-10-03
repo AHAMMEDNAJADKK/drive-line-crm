@@ -1,13 +1,15 @@
 const User = require('../models/User');
 const Lead = require('../models/Lead');
+const Branch = require('../models/Branch');
 const VehicleSpecialization = require('../models/VehicleSpecialization');
 
 const { assertObjectId } = require('../utils/ids');
-const { STAFF_ROLES } = require('../utils/roles');
+const { STAFF_ROLES, isAdmin, isHrStaff, isEmployee } = require('../utils/roles');
 const {
   normalizeVehicleSpecialization
 } = require('../utils/vehicleSpecializations');
 const { parseOptionalDate } = require('../utils/dates');
+const { assertBranchAccess, getUserBranchId, getBranchFilter } = require('../utils/branchAccess');
 
 const VALID_ROLES = STAFF_ROLES;
 const VALID_STATUSES = ['active', 'inactive'];
@@ -25,9 +27,6 @@ const normalizeEmployeeId = (value) =>
 
 /**
  * Get all vehicle specializations.
- *
- * The default specializations are automatically created if they
- * do not already exist in MongoDB.
  */
 const getVehicleSpecializations = async () => {
   const defaultSpecializations = [
@@ -69,11 +68,6 @@ const getVehicleSpecializations = async () => {
 
 /**
  * Create a new vehicle specialization.
- *
- * Example:
- *   Japan Car
- *   BMW
- *   Toyota
  */
 const createVehicleSpecialization = async (name) => {
   const cleanName = normalizeString(name);
@@ -84,7 +78,6 @@ const createVehicleSpecialization = async (name) => {
     );
   }
 
-  // Prevent duplicate names regardless of letter casing.
   const escapedName = cleanName.replace(
     /[.*+?^${}()|[\]\\]/g,
     '\\$&'
@@ -112,13 +105,22 @@ const createVehicleSpecialization = async (name) => {
   return specialization.toJSON();
 };
 
-const listEmployees = async ({
-  page = 1,
-  limit = 25,
-  search = '',
-  role,
-  status
-}) => {
+/**
+ * List employees with branch isolation & admin branch filtering
+ */
+const listEmployees = async (
+  queryParams = {},
+  currentUser
+) => {
+  const {
+    page = 1,
+    limit = 25,
+    search = '',
+    role,
+    status,
+    branchId
+  } = queryParams;
+
   let currentPage = Number(page);
   let currentLimit = Number(limit);
 
@@ -130,15 +132,28 @@ const listEmployees = async ({
     currentLimit = 25;
   }
 
-  // Prevent excessively large requests.
   currentLimit = Math.min(currentLimit, 100);
 
   const query = {};
 
+  // Branch isolation
+  if (!isAdmin(currentUser)) {
+    // HR only sees employees within their branch
+    const hrBranch = getUserBranchId(currentUser);
+    query.branchId = hrBranch;
+  } else {
+    // Admin can filter by branch or view all
+    if (branchId === 'unassigned') {
+      query.$or = [{ branchId: null }, { branchId: { $exists: false } }];
+    } else if (branchId && branchId !== 'all') {
+      query.branchId = branchId;
+    }
+  }
+
   const searchText = normalizeString(search);
 
   if (searchText) {
-    query.$or = [
+    const searchConditions = [
       { name: { $regex: searchText, $options: 'i' } },
       { email: { $regex: searchText, $options: 'i' } },
       { phone: { $regex: searchText, $options: 'i' } },
@@ -153,13 +168,19 @@ const listEmployees = async ({
         }
       }
     ];
+
+    if (query.$or) {
+      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+      delete query.$or;
+    } else {
+      query.$or = searchConditions;
+    }
   }
 
   if (role) {
     if (!VALID_ROLES.includes(role)) {
       throw new Error('Invalid role');
     }
-
     query.role = role;
   }
 
@@ -167,7 +188,6 @@ const listEmployees = async ({
     if (!VALID_STATUSES.includes(status)) {
       throw new Error('Invalid staff status');
     }
-
     query.status = status;
   }
 
@@ -176,12 +196,13 @@ const listEmployees = async ({
   const total = await User.countDocuments(query);
 
   const users = await User.find(query)
+    .populate('branchId', 'name code address phone status')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(currentLimit)
     .lean();
 
-  // Count leads assigned to each employee.
+  // Count leads assigned to each employee
   const userIds = users.map((user) => user._id);
 
   let leadCounts = [];
@@ -190,7 +211,8 @@ const listEmployees = async ({
     leadCounts = await Lead.aggregate([
       {
         $match: {
-          assignedTo: { $in: userIds }
+          assignedTo: { $in: userIds },
+          isDeleted: { $ne: true }
         }
       },
       {
@@ -237,42 +259,55 @@ const listEmployees = async ({
   };
 };
 
-const getEmployeeById = async (id) => {
+const getEmployeeById = async (id, currentUser) => {
   assertObjectId(id, 'staff id');
 
-  const user = await User.findById(id).lean();
+  const user = await User.findById(id)
+    .populate('branchId', 'name code address phone status')
+    .lean();
 
   if (!user) {
     throw new Error('Employee not found');
   }
 
-  const leadsCount = await Lead.countDocuments({
-    assignedTo: id
-  });
+  // Branch access check for HR
+  if (currentUser && !isAdmin(currentUser)) {
+    assertBranchAccess(user.branchId, currentUser, 'view');
+  }
+
+  const assignedLeadsCount =
+    await Lead.countDocuments({
+      assignedTo: user._id,
+      isDeleted: { $ne: true }
+    });
 
   return {
     ...user,
-    leadsAssigned: leadsCount,
-    assignedLeadsCount: leadsCount
+    leadsAssigned: assignedLeadsCount,
+    assignedLeadsCount
   };
 };
 
-const createEmployee = async ({
-  name,
-  email,
-  phone,
-  employeeId,
-  role,
-  status,
-  password,
-  idDetails,
-  passportNumber,
-  passportExpireDate,
-  vehicleSpecialization,
-  branch,
-  position,
-  garageShop
-}) => {
+const createEmployee = async (
+  {
+    name,
+    email,
+    password,
+    role,
+    status,
+    phone,
+    employeeId,
+    idDetails,
+    passportNumber,
+    passportExpireDate,
+    vehicleSpecialization,
+    branch,
+    branchId,
+    position,
+    garageShop
+  },
+  currentUser
+) => {
   const cleanName = normalizeString(name);
   const cleanEmail = normalizeEmail(email);
   const cleanEmployeeId =
@@ -298,16 +333,49 @@ const createEmployee = async ({
     }
   }
 
-  const selectedRole = role || 'employee';
+  let selectedRole = role || 'employee';
 
   if (!VALID_ROLES.includes(selectedRole)) {
     throw new Error('Invalid role');
+  }
+
+  // HR cannot create admin
+  if (isHrStaff(currentUser) && selectedRole === 'admin') {
+    throw new Error('HR cannot create administrator accounts');
   }
 
   const selectedStatus = status || 'active';
 
   if (!VALID_STATUSES.includes(selectedStatus)) {
     throw new Error('Invalid staff status');
+  }
+
+  // Branch assignment resolution
+  let finalBranchId = null;
+  let finalBranchName = normalizeString(branch);
+
+  if (isHrStaff(currentUser)) {
+    // HR must assign employee to their own branch
+    finalBranchId = getUserBranchId(currentUser);
+    if (!finalBranchId) {
+      throw new Error('HR account is not assigned to a branch');
+    }
+    const branchDoc = await Branch.findById(finalBranchId);
+    if (branchDoc) finalBranchName = branchDoc.name;
+  } else if (isAdmin(currentUser)) {
+    // Admin can assign any branch
+    if (branchId) {
+      assertObjectId(branchId, 'Branch ID');
+      const branchDoc = await Branch.findById(branchId);
+      if (!branchDoc) throw new Error('Selected branch does not exist');
+      finalBranchId = branchDoc._id;
+      finalBranchName = branchDoc.name;
+    }
+  }
+
+  // HR and Employee MUST belong to a branch (unless existing legacy data)
+  if (selectedRole !== 'admin' && !finalBranchId) {
+    throw new Error(`A valid branch assignment is required for ${selectedRole.toUpperCase()}`);
   }
 
   const existingEmail = await User.findOne({
@@ -345,24 +413,20 @@ const createEmployee = async ({
         vehicleSpecialization
       ) || '',
 
-    branch: normalizeString(branch),
+    branch: finalBranchName,
+    branchId: finalBranchId,
     position: normalizeString(position),
     garageShop: normalizeString(garageShop),
     role: selectedRole,
     status: selectedStatus,
-
-    // Keep the existing CRM default password behavior.
-    password:
-      password !== undefined &&
-      password !== null &&
-      String(password).length > 0
-        ? String(password)
-        : 'Driveline@123'
+    password: password || '123456'
   });
 
   await newEmployee.save();
 
-  return newEmployee.toJSON();
+  return User.findById(newEmployee._id)
+    .populate('branchId', 'name code address phone status')
+    .lean();
 };
 
 const updateEmployee = async (
@@ -370,18 +434,20 @@ const updateEmployee = async (
   {
     name,
     email,
-    phone,
-    employeeId,
     role,
     status,
+    phone,
+    employeeId,
     idDetails,
     passportNumber,
     passportExpireDate,
     vehicleSpecialization,
     branch,
+    branchId,
     position,
     garageShop
-  }
+  },
+  currentUser
 ) => {
   assertObjectId(id, 'staff id');
 
@@ -389,6 +455,14 @@ const updateEmployee = async (
 
   if (!user) {
     throw new Error('Employee not found');
+  }
+
+  // Branch check for HR
+  if (currentUser && !isAdmin(currentUser)) {
+    assertBranchAccess(user.branchId, currentUser, 'modify');
+    if (role === 'admin') {
+      throw new Error('HR cannot elevate staff to admin');
+    }
   }
 
   if (email !== undefined) {
@@ -452,10 +526,6 @@ const updateEmployee = async (
     user.name = cleanName;
   }
 
-  if (phone !== undefined) {
-    user.phone = normalizeString(phone);
-  }
-
   if (role !== undefined) {
     if (!VALID_ROLES.includes(role)) {
       throw new Error('Invalid role');
@@ -472,6 +542,10 @@ const updateEmployee = async (
     user.status = status;
   }
 
+  if (phone !== undefined) {
+    user.phone = normalizeString(phone);
+  }
+
   if (idDetails !== undefined) {
     user.idDetails = normalizeString(idDetails);
   }
@@ -483,7 +557,7 @@ const updateEmployee = async (
 
   if (passportExpireDate !== undefined) {
     user.passportExpireDate =
-      parseOptionalDate(passportExpireDate);
+      parseOptionalDate(passportExpireDate) || null;
   }
 
   if (vehicleSpecialization !== undefined) {
@@ -493,7 +567,19 @@ const updateEmployee = async (
       ) || '';
   }
 
-  if (branch !== undefined) {
+  // Branch update: ONLY Admin can change branch assignment
+  if (branchId !== undefined && isAdmin(currentUser)) {
+    if (branchId) {
+      assertObjectId(branchId, 'Branch ID');
+      const branchDoc = await Branch.findById(branchId);
+      if (!branchDoc) throw new Error('Selected branch does not exist');
+      user.branchId = branchDoc._id;
+      user.branch = branchDoc.name;
+    } else {
+      user.branchId = null;
+      user.branch = '';
+    }
+  } else if (branch !== undefined && !branchId) {
     user.branch = normalizeString(branch);
   }
 
@@ -502,19 +588,17 @@ const updateEmployee = async (
   }
 
   if (garageShop !== undefined) {
-    user.garageShop =
-      normalizeString(garageShop);
+    user.garageShop = normalizeString(garageShop);
   }
 
   await user.save();
 
-  return user.toJSON();
+  return User.findById(user._id)
+    .populate('branchId', 'name code address phone status')
+    .lean();
 };
 
-const toggleEmployeeStatus = async (
-  id,
-  status
-) => {
+const toggleEmployeeStatus = async (id, status, currentUser) => {
   assertObjectId(id, 'staff id');
 
   if (!VALID_STATUSES.includes(status)) {
@@ -527,6 +611,10 @@ const toggleEmployeeStatus = async (
     throw new Error('Employee not found');
   }
 
+  if (currentUser && !isAdmin(currentUser)) {
+    assertBranchAccess(user.branchId, currentUser, 'modify');
+  }
+
   user.status = status;
 
   await user.save();
@@ -536,7 +624,8 @@ const toggleEmployeeStatus = async (
 
 const resetEmployeePassword = async (
   id,
-  newPassword
+  newPassword,
+  currentUser
 ) => {
   assertObjectId(id, 'staff id');
 
@@ -544,6 +633,10 @@ const resetEmployeePassword = async (
 
   if (!user) {
     throw new Error('Employee not found');
+  }
+
+  if (currentUser && !isAdmin(currentUser)) {
+    assertBranchAccess(user.branchId, currentUser, 'modify');
   }
 
   if (
@@ -564,12 +657,25 @@ const resetEmployeePassword = async (
   };
 };
 
-const getActiveEmployeesList = async () => {
-  return User.find({
-    status: 'active'
-  })
+const getActiveEmployeesList = async (currentUser, queryParams = {}) => {
+  const query = { status: 'active' };
+
+  if (currentUser && !isAdmin(currentUser)) {
+    // HR and employee only see active staff in their branch
+    const userBranch = getUserBranchId(currentUser);
+    query.branchId = userBranch;
+  } else if (queryParams.branchId && queryParams.branchId !== 'all') {
+    if (queryParams.branchId === 'unassigned') {
+      query.$or = [{ branchId: null }, { branchId: { $exists: false } }];
+    } else {
+      query.branchId = queryParams.branchId;
+    }
+  }
+
+  return User.find(query)
+    .populate('branchId', 'name code')
     .select(
-      '_id name email employeeId role vehicleSpecialization'
+      '_id name email employeeId role vehicleSpecialization branch branchId'
     )
     .sort({ name: 1 })
     .lean();

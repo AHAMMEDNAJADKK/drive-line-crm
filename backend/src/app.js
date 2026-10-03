@@ -17,6 +17,7 @@ const importExportRoutes = require('./routes/importExportRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
+const branchRoutes = require('./routes/branchRoutes');
 
 const app = express();
 
@@ -142,6 +143,9 @@ app.use('/api/customers', customerRoutes);
 
 // Suppliers
 app.use('/api/suppliers', supplierRoutes);
+
+// Branches
+app.use('/api/branches', branchRoutes);
 
 // ============================================================
 // 404 HANDLER

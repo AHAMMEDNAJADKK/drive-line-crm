@@ -3,6 +3,7 @@ const Lead = require('../models/Lead');
 const LeadFollowup = require('../models/LeadFollowup');
 const LeadActivity = require('../models/LeadActivity');
 const { buildLeadFilterQuery } = require('./leadService');
+const { assertLeadAccess } = require('../utils/leadAccess');
 
 /**
  * Generate Landscape Company/Filtered Leads PDF Report
@@ -11,6 +12,7 @@ const generateLeadsLandscapePDF = async (currentUser, queryParams) => {
   const query = buildLeadFilterQuery(currentUser, queryParams);
 
   const leads = await Lead.find(query)
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name employeeId')
     .populate('createdBy', 'name')
     .sort({ createdAt: -1 })
@@ -186,6 +188,7 @@ const generateLeadsLandscapePDF = async (currentUser, queryParams) => {
  */
 const generateSingleLeadPDF = async (leadId, currentUser) => {
   const lead = await Lead.findById(leadId)
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name employeeId email phone')
     .populate('createdBy', 'name employeeId')
     .lean();
@@ -194,13 +197,8 @@ const generateSingleLeadPDF = async (leadId, currentUser) => {
     throw new Error('Lead not found');
   }
 
-  // Check role authorization for single lead
-  if (currentUser && currentUser.role === 'employee') {
-    const isAssigned = lead.assignedTo && lead.assignedTo._id.toString() === currentUser._id.toString();
-    if (!isAssigned) {
-      throw new Error('Unauthorized to export this lead');
-    }
-  }
+  // Branch and user access enforcement
+  assertLeadAccess(lead, currentUser, 'export');
 
   const followups = await LeadFollowup.find({ leadId })
     .populate('createdBy', 'name employeeId')

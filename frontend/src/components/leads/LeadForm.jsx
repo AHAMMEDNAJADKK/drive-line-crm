@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 
 import { getActiveEmployeesApi } from '../../services/employeeApi';
+import { getActiveBranchesListApi } from '../../services/branchApi';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   LEAD_STATUSES,
@@ -992,6 +994,9 @@ export default function LeadForm({
   loading = false,
   isNew = false,
 }) {
+  const { user } = useAuth();
+  const [branches, setBranches] = useState([]);
+
   const [form, setForm] = useState({
     mobileNumber: '',
     customerName: '',
@@ -1014,6 +1019,7 @@ export default function LeadForm({
     status: 'New',
     priority: 'Medium',
     assignedTo: '',
+    branchId: initialData?.branchId?._id || initialData?.branchId || '',
     nextFollowUpDate: '',
     remarks: '',
     lostReason: '',
@@ -1040,8 +1046,16 @@ export default function LeadForm({
   const [errors, setErrors] = useState({});
 
   /* =======================================================
-     INITIAL DATA
+     INITIAL DATA & BRANCHES
   ======================================================= */
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      getActiveBranchesListApi()
+        .then((res) => setBranches(res.data?.data || []))
+        .catch(() => setBranches([]));
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     if (
@@ -1051,6 +1065,12 @@ export default function LeadForm({
       setForm((prev) => ({
         ...prev,
         ...initialData,
+
+        branchId:
+          initialData.branchId?._id ||
+          initialData.branchId ||
+          prev.branchId ||
+          '',
 
         assignedTo:
           initialData.assignedTo?._id ||
@@ -1135,7 +1155,7 @@ export default function LeadForm({
   ======================================================= */
 
   useEffect(() => {
-    getActiveEmployeesApi()
+    getActiveEmployeesApi(form.branchId ? { branchId: form.branchId } : {})
       .then((res) => {
         setEmployees(
           res.data?.data || []
@@ -1144,7 +1164,7 @@ export default function LeadForm({
       .catch(() => {
         setEmployees([]);
       });
-  }, []);
+  }, [form.branchId]);
 
   /* =======================================================
      NORMAL FIELD UPDATE
@@ -2207,6 +2227,30 @@ export default function LeadForm({
               error={errors.priority}
               options={LEAD_PRIORITIES}
             />
+
+            {user?.role === 'admin' && (
+              <div>
+                <label className={LABEL_CLASS}>
+                  Branch
+                </label>
+
+                <select
+                  value={form.branchId || ''}
+                  onChange={set('branchId')}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">
+                    — Unassigned (Select Branch) —
+                  </option>
+
+                  {branches.map((branch) => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.name} ({branch.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label

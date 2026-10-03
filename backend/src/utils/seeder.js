@@ -1,10 +1,40 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Branch = require('../models/Branch');
 const connectDB = require('../config/db');
 
 const seed = async () => {
   await connectDB();
+
+  console.log('\n🌱 Seeding Drive Line CRM multi-branch data...\n');
+
+  // Ensure default branches
+  let mainBranch = await Branch.findOne({ code: 'MAIN' });
+  if (!mainBranch) {
+    mainBranch = await Branch.create({
+      name: 'Main Branch',
+      code: 'MAIN',
+      address: 'Central Headquarters, Drive Line',
+      phone: '+91 9000000000',
+      email: 'main@driveline.com',
+      status: 'active'
+    });
+    console.log(`✅ Created branch: ${mainBranch.name}`);
+  }
+
+  let malappuramBranch = await Branch.findOne({ code: 'MLPM' });
+  if (!malappuramBranch) {
+    malappuramBranch = await Branch.create({
+      name: 'Malappuram Branch',
+      code: 'MLPM',
+      address: 'Malappuram Center, Kerala',
+      phone: '+91 9000000002',
+      email: 'malappuram@driveline.com',
+      status: 'active'
+    });
+    console.log(`✅ Created branch: ${malappuramBranch.name}`);
+  }
 
   const seeds = [
     {
@@ -14,7 +44,9 @@ const seed = async () => {
       employeeId: 'DL001',
       role: 'admin',
       status: 'active',
-      password: 'Admin@123'
+      password: 'Admin@123',
+      branch: '',
+      branchId: null
     },
     {
       name: 'HR User',
@@ -23,7 +55,9 @@ const seed = async () => {
       employeeId: 'DL002',
       role: 'hr',
       status: 'active',
-      password: 'Hr@123456'
+      password: 'Hr@123456',
+      branch: mainBranch.name,
+      branchId: mainBranch._id
     },
     {
       name: 'Rahul Sales',
@@ -32,16 +66,23 @@ const seed = async () => {
       employeeId: 'DL003',
       role: 'employee',
       status: 'active',
-      password: 'Employee@123'
+      password: 'Employee@123',
+      branch: mainBranch.name,
+      branchId: mainBranch._id
     }
   ];
-
-  console.log('\n🌱 Seeding Drive Line CRM users...\n');
 
   for (const s of seeds) {
     const exists = await User.findOne({ email: s.email });
     if (exists) {
-      console.log(`⏭  Skipping existing user: ${s.email}`);
+      if (!exists.branchId && s.branchId) {
+        exists.branchId = s.branchId;
+        exists.branch = s.branch;
+        await exists.save();
+        console.log(`🔄 Updated branch for existing user: ${s.email}`);
+      } else {
+        console.log(`⏭  Skipping existing user: ${s.email}`);
+      }
       continue;
     }
     const u = new User(s);
@@ -51,9 +92,9 @@ const seed = async () => {
 
   console.log('\n✅ Seeding complete!\n');
   console.log('Login credentials:');
-  console.log('  Admin:    admin@driveline.com / Admin@123');
-  console.log('  HR:       hr@driveline.com / Hr@123456');
-  console.log('  Employee: rahul@driveline.com / Employee@123\n');
+  console.log('  Admin:    admin@driveline.com / Admin@123 (All branches)');
+  console.log('  HR:       hr@driveline.com / Hr@123456 (Main Branch)');
+  console.log('  Employee: rahul@driveline.com / Employee@123 (Main Branch)\n');
 
   await mongoose.connection.close();
   process.exit(0);

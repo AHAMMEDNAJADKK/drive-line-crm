@@ -13,7 +13,7 @@ const getCustomer = async (req, res) => {
     res.json({ success: true, data: customer });
   } catch (err) {
     if (err.message === 'Customer not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     if (err.statusCode === 400) return res.status(400).json({ success: false, message: err.message });
     res.status(500).json({ success: false, message: err.message });
   }
@@ -42,7 +42,7 @@ const updateCustomer = async (req, res) => {
     res.json({ success: true, message: 'Customer updated successfully', data: customer });
   } catch (err) {
     if (err.message === 'Customer not found') return res.status(404).json({ success: false, message: err.message });
-    if (err.message.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
+    if (err.statusCode === 403 || err.message?.includes('Forbidden') || err.message?.includes('Unauthorized')) return res.status(403).json({ success: false, message: err.message });
     res.status(400).json({ success: false, message: err.message });
   }
 };

@@ -25,6 +25,9 @@ export default function EmployeeTable({
               <th className="px-6 py-4">Contact</th>
               <th className="px-6 py-4">Vehicle</th>
               <th className="px-6 py-4">Role</th>
+              {currentUser?.role === 'admin' && (
+                <th className="px-6 py-4">Branch</th>
+              )}
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Leads Assigned</th>
               <th className="px-6 py-4">Last Login</th>
@@ -60,6 +63,17 @@ export default function EmployeeTable({
                 <td className="px-6 py-4">
                   <RoleBadge role={emp.role} />
                 </td>
+                {currentUser?.role === 'admin' && (
+                  <td className="px-6 py-4 text-xs">
+                    {emp.branchId ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                        {emp.branchId.name || emp.branchId.code}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic">Unassigned</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-6 py-4">
                   <UserStatusBadge status={emp.status} />
                 </td>
@@ -159,6 +173,11 @@ export default function EmployeeTable({
                   {emp.leadsAssigned ?? emp.assignedLeadsCount ?? 0}
                 </span>
               </div>
+              {emp.branchId && (
+                <div className="text-gray-500">
+                  Branch: <span className="text-blue-600 dark:text-blue-400 font-medium">{emp.branchId.name || emp.branchId.code}</span>
+                </div>
+              )}
               <div className="text-gray-500">
                 Last Login: <span className="text-gray-800 dark:text-gray-200">{formatDateTime(emp.lastLogin)}</span>
               </div>

@@ -35,8 +35,10 @@ const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find user by id
-    const user = await User.findById(decoded.id).select('-password');
+    // Find user by id and populate branch details
+    const user = await User.findById(decoded.id)
+      .select('-password')
+      .populate('branchId', 'name code address phone status');
 
     if (!user) {
       return res.status(401).json({

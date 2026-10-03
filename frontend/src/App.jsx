@@ -25,6 +25,7 @@ import Suppliers from './pages/Suppliers';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import HRDashboard from './pages/HRDashboard';
+import Branches from './pages/Branches';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -118,6 +119,20 @@ function AppRoutes() {
               element={<ProtectedRoute allowedRoles={['hr']} />}
           >
             <Route path="/hr" element={<HRDashboard />} />
+          </Route>
+
+          {/* Admin branch management */}
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoles={['admin']}
+              />
+            }
+          >
+            <Route
+              path="/branches"
+              element={<Branches />}
+            />
           </Route>
 
           {/* Admin and HR employee management */}

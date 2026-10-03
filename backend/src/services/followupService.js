@@ -3,6 +3,7 @@ const Lead = require('../models/Lead');
 const LeadActivity = require('../models/LeadActivity');
 const { upsertCustomerFromLead } = require('./customerService');
 const { normalizeLeadStatus } = require('../utils/leadStatus');
+const { assertLeadAccess } = require('../utils/leadAccess');
 
 /**
  * Add a new follow-up interaction to a lead
@@ -16,13 +17,8 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
     throw new Error('Lead not found');
   }
 
-  // Authorization check
-  if (currentUser.role === 'employee') {
-    const isAssigned = lead.assignedTo && lead.assignedTo.toString() === currentUser._id.toString();
-    if (!isAssigned) {
-      throw new Error('Unauthorized to add follow-up to this lead');
-    }
-  }
+  // Authorize branch and employee ownership
+  assertLeadAccess(lead, currentUser, 'add follow-up');
 
   const previousStatus = lead.status;
 
@@ -69,52 +65,36 @@ const addFollowup = async ({ leadId, remarks, statusChangedTo, nextFollowUpDate 
     }
   }
 
-
+  // Log activity
   await LeadActivity.create({
     leadId,
-    action: 'Follow-up Added',
+    action: statusChangedTo ? 'Status Changed' : 'Follow-up Added',
     performedBy: currentUser._id,
-    remarks: remarks.trim(),
+    remarks: statusChangedTo
+      ? `Status changed from ${previousStatus} to ${statusChangedTo}. Remarks: ${remarks}`
+      : `Follow-up added: ${remarks}`,
     details: {
-      statusChangedTo: statusChangedTo || lead.status,
-      nextFollowUpDate: followup.nextFollowUpDate
+      statusChangedTo: statusChangedTo || null,
+      previousStatus: statusChangedTo ? previousStatus : null,
+      nextFollowUpDate: nextFollowUpDate || null,
+      followupId: followup._id
     }
   });
 
-  if (statusChangedTo && statusChangedTo !== previousStatus) {
-    await LeadActivity.create({
-      leadId,
-      action: statusChangedTo === 'Converted' ? 'Lead Converted' : statusChangedTo === 'Lost' ? 'Lead Lost' : 'Status Changed',
-      performedBy: currentUser._id,
-      remarks: `Status updated to ${statusChangedTo} during follow-up`,
-      details: { from: previousStatus, to: statusChangedTo }
-    });
-  }
-
-  const populated = await LeadFollowup.findById(followup._id)
-    .populate('createdBy', 'name employeeId role')
-    .lean();
-
-  return populated;
+  return followup;
 };
 
 /**
- * Get all follow-ups for a lead (with RBAC check)
+ * Get all follow-ups for a lead (with branch & RBAC check)
  */
 const getFollowupsByLead = async (leadId, currentUser) => {
-  const Lead = require('../models/Lead');
   const lead = await Lead.findById(leadId);
   if (!lead) {
     throw new Error('Lead not found');
   }
 
-  // Check role authorization for single lead
-  if (currentUser && currentUser.role === 'employee') {
-    const isAssigned = lead.assignedTo && lead.assignedTo.toString() === currentUser._id.toString();
-    if (!isAssigned) {
-      throw new Error('Unauthorized to view follow-ups for this lead');
-    }
-  }
+  // Verify branch and ownership access
+  assertLeadAccess(lead, currentUser, 'view follow-ups');
 
   const followups = await LeadFollowup.find({ leadId })
     .populate('createdBy', 'name employeeId role')

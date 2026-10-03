@@ -15,7 +15,8 @@ const rejectHrAdminAssignment = (req, res) => {
 const listEmployees = async (req, res, next) => {
   try {
     const result = await employeeService.listEmployees(
-      req.query
+      req.query,
+      req.user
     );
 
     return res.status(200).json({
@@ -31,7 +32,8 @@ const getEmployee = async (req, res, next) => {
   try {
     const employee =
       await employeeService.getEmployeeById(
-        req.params.id
+        req.params.id,
+        req.user
       );
 
     return res.status(200).json({
@@ -41,6 +43,13 @@ const getEmployee = async (req, res, next) => {
   } catch (err) {
     if (err.message === 'Employee not found') {
       return res.status(404).json({
+        success: false,
+        message: err.message
+      });
+    }
+
+    if (err.statusCode === 403 || err.message.includes('Forbidden') || err.message.includes('Unauthorized')) {
+      return res.status(403).json({
         success: false,
         message: err.message
       });
@@ -73,7 +82,8 @@ const createEmployee = async (req, res, next) => {
   try {
     const employee =
       await employeeService.createEmployee(
-        req.body
+        req.body,
+        req.user
       );
 
     return res.status(201).json({
@@ -82,7 +92,6 @@ const createEmployee = async (req, res, next) => {
       data: employee
     });
   } catch (err) {
-    // Duplicate email / Staff ID
     if (err.code === 11000) {
       const duplicateField =
         Object.keys(err.keyPattern || {})[0];
@@ -98,6 +107,13 @@ const createEmployee = async (req, res, next) => {
       });
     }
 
+    if (err.statusCode === 403 || err.message.includes('Forbidden')) {
+      return res.status(403).json({
+        success: false,
+        message: err.message
+      });
+    }
+
     if (
       err.name === 'ValidationError' ||
       err.name === 'CastError'
@@ -108,7 +124,6 @@ const createEmployee = async (req, res, next) => {
       });
     }
 
-    // Service validation errors
     if (err.message) {
       return res.status(400).json({
         success: false,
@@ -127,7 +142,8 @@ const updateEmployee = async (req, res, next) => {
     const employee =
       await employeeService.updateEmployee(
         req.params.id,
-        req.body
+        req.body,
+        req.user
       );
 
     return res.status(200).json({
@@ -138,6 +154,13 @@ const updateEmployee = async (req, res, next) => {
   } catch (err) {
     if (err.message === 'Employee not found') {
       return res.status(404).json({
+        success: false,
+        message: err.message
+      });
+    }
+
+    if (err.statusCode === 403 || err.message.includes('Forbidden') || err.message.includes('Unauthorized')) {
+      return res.status(403).json({
         success: false,
         message: err.message
       });
@@ -190,7 +213,8 @@ const toggleStatus = async (req, res, next) => {
     const employee =
       await employeeService.toggleEmployeeStatus(
         req.params.id,
-        status
+        status,
+        req.user
       );
 
     return res.status(200).json({
@@ -204,6 +228,13 @@ const toggleStatus = async (req, res, next) => {
   } catch (err) {
     if (err.message === 'Employee not found') {
       return res.status(404).json({
+        success: false,
+        message: err.message
+      });
+    }
+
+    if (err.statusCode === 403 || err.message.includes('Forbidden')) {
+      return res.status(403).json({
         success: false,
         message: err.message
       });
@@ -230,7 +261,8 @@ const resetPassword = async (req, res, next) => {
     const result =
       await employeeService.resetEmployeePassword(
         req.params.id,
-        newPassword
+        newPassword,
+        req.user
       );
 
     return res.status(200).json({
@@ -240,6 +272,13 @@ const resetPassword = async (req, res, next) => {
   } catch (err) {
     if (err.message === 'Employee not found') {
       return res.status(404).json({
+        success: false,
+        message: err.message
+      });
+    }
+
+    if (err.statusCode === 403 || err.message.includes('Forbidden')) {
+      return res.status(403).json({
         success: false,
         message: err.message
       });
@@ -270,7 +309,7 @@ const getActiveEmployeesList = async (
 ) => {
   try {
     const employees =
-      await employeeService.getActiveEmployeesList();
+      await employeeService.getActiveEmployeesList(req.user, req.query);
 
     return res.status(200).json({
       success: true,

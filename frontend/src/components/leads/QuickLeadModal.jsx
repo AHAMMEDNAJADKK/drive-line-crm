@@ -121,7 +121,7 @@ export default function QuickLeadModal({
       title="Add New Lead"
       size="xl"
     >
-      <div className="space-y-4">
+      <div className="space-y-4 p-5 sm:p-6">
         {/* Duplicate warning */}
         {duplicate && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20 p-4">

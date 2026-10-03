@@ -49,6 +49,7 @@ const login = async ({ identifier, password }) => {
 
   user.lastLogin = new Date();
   await user.save();
+  await user.populate('branchId', 'name code address phone status');
 
   const token = generateToken(user._id);
 
@@ -185,7 +186,7 @@ const registerFirstAdmin = async (data) => {
 };
 
 const getMe = async (userId) => {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).populate('branchId', 'name code address phone status');
 
   if (!user) {
     throw new Error('User not found');

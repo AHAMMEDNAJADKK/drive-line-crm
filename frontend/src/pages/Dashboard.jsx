@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Phone, MessageCircle,
   ChevronRight, BarChart3, Award
 } from 'lucide-react';
-import { getDashboardApi } from '../services/dashboardApi';
+import { getDashboardApi, getBranchOverviewApi } from '../services/dashboardApi';
 import { useAuth } from '../context/AuthContext';
 import { LoadingState, ErrorState } from '../components/common/States';
 import { formatDate, formatFollowUpDate, whatsappLink, telLink, getInitials } from '../utils/formatters';
@@ -15,6 +15,8 @@ import LeadStatusChart from '../components/dashboard/LeadStatusChart';
 import LeadTrendChart from '../components/dashboard/LeadTrendChart';
 import PartsDemandChart from '../components/dashboard/PartsDemandChart';
 import EmployeePerformanceChart from '../components/dashboard/EmployeePerformanceChart';
+import BranchSelector from '../components/common/BranchSelector';
+import BranchDetailsSection from '../components/dashboard/BranchDetailsSection';
 
 function MetricCard({ label, value, color, icon: Icon, onClick }) {
   return (
@@ -66,13 +68,35 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const isEmployee = user?.role === 'employee';
+  const [selectedBranch, setSelectedBranch] = useState('');
 
-  const load = async () => {
+  // Admin branch overview analytics
+  const [branchOverview, setBranchOverview] = useState(null);
+  const [branchOverviewLoading, setBranchOverviewLoading] = useState(false);
+  const [branchOverviewError, setBranchOverviewError] = useState('');
+
+  const isEmployee = user?.role === 'employee';
+  const isAdmin = user?.role === 'admin';
+
+  const loadBranchOverview = async () => {
+    if (!isAdmin) return;
+    setBranchOverviewLoading(true);
+    setBranchOverviewError('');
+    try {
+      const res = await getBranchOverviewApi();
+      setBranchOverview(res.data?.data || null);
+    } catch (err) {
+      setBranchOverviewError(err.response?.data?.message || 'Failed to load branch overview.');
+    } finally {
+      setBranchOverviewLoading(false);
+    }
+  };
+
+  const load = async (branchId = selectedBranch) => {
     setLoading(true);
     setError('');
     try {
-      const res = await getDashboardApi();
+      const res = await getDashboardApi({ branchId: branchId || undefined });
       setData(res.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load dashboard.');
@@ -81,10 +105,18 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(selectedBranch);
+  }, [selectedBranch]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadBranchOverview();
+    }
+  }, [isAdmin]);
 
   if (loading) return <LoadingState message="Loading dashboard…" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <ErrorState message={error} onRetry={() => load(selectedBranch)} />;
   if (!data) return null;
 
   const {
@@ -102,31 +134,68 @@ export default function Dashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
+  const getLeadsLink = (extraParams = '') => {
+    const params = new URLSearchParams();
+    if (selectedBranch) params.set('branchId', selectedBranch);
+    if (extraParams) {
+      const extra = new URLSearchParams(extraParams);
+      for (const [key, val] of extra.entries()) {
+        params.set(key, val);
+      }
+    }
+    const qs = params.toString();
+    return qs ? `/leads?${qs}` : '/leads';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          {greeting}, {user?.name?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Here's what's happening with your leads today.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {greeting}, {user?.name?.split(' ')[0]} 👋
+            </h1>
+            {user?.branchId && (
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                {user.branchId.name || user.branchId.code}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {user?.role === 'admin' && selectedBranch
+              ? 'Showing metrics for selected branch.'
+              : user?.branchId
+              ? `Here's what's happening with ${user.branchId.name} leads today.`
+              : "Here's what's happening with your leads today."}
+          </p>
+        </div>
+
+        {user?.role === 'admin' && (
+          <div className="flex items-center gap-2">
+            <BranchSelector
+              value={selectedBranch}
+              onChange={(newBranch) => setSelectedBranch(newBranch)}
+              showAll={true}
+              allLabel="Consolidated (All Branches)"
+            />
+          </div>
+        )}
       </div>
 
       {/* Main metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
         <MetricCard label="Total Leads" value={metrics.totalLeads} icon={Users}
-          onClick={() => navigate('/leads')} />
+          onClick={() => navigate(getLeadsLink())} />
         <MetricCard label="Today's Follow-ups" value={metrics.todayFollowupsCount}
           color="text-amber-600 dark:text-amber-400" icon={Clock}
-          onClick={() => navigate('/leads?followup=today')} />
+          onClick={() => navigate(getLeadsLink('followup=today'))} />
         <MetricCard label="Overdue" value={metrics.overdueFollowupsCount}
           color={metrics.overdueFollowupsCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}
-          icon={AlertCircle} onClick={() => navigate('/leads?followup=overdue')} />
+          icon={AlertCircle} onClick={() => navigate(getLeadsLink('followup=overdue'))} />
         <MetricCard label="Converted" value={metrics.convertedLeads}
           color="text-emerald-600 dark:text-emerald-400" icon={CheckCircle2}
-          onClick={() => navigate('/leads?status=Converted')} />
+          onClick={() => navigate(getLeadsLink('status=Converted'))} />
       </div>
 
       {/* Interactive Charts Section */}
@@ -264,6 +333,18 @@ export default function Dashboard() {
             <PartsDemandChart topPartsDemand={topPartsDemand} topVehiclesDemand={topVehiclesDemand} />
           </div>
         </div>
+      )}
+
+      {/* Final Section: Branch Details (Admin Only) */}
+      {isAdmin && (
+        <BranchDetailsSection
+          data={branchOverview}
+          loading={branchOverviewLoading}
+          error={branchOverviewError}
+          onRetry={loadBranchOverview}
+          onSelectBranch={(bId) => setSelectedBranch(bId)}
+          selectedBranch={selectedBranch}
+        />
       )}
     </div>
   );

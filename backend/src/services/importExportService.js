@@ -3,6 +3,9 @@ const fs = require('fs');
 const Lead = require('../models/Lead');
 const User = require('../models/User');
 const LeadActivity = require('../models/LeadActivity');
+const Branch = require('../models/Branch');
+const { isAdmin, isHrStaff } = require('../utils/roles');
+const { getUserBranchId } = require('../utils/branchAccess');
 const { normalizePhoneNumber, getCanonicalPhoneKey, isValidPhoneNumber } = require('../utils/phoneUtils');
 const { buildLeadFilterQuery } = require('./leadService');
 
@@ -121,6 +124,17 @@ const processLeadImport = async (filePath, mappingJson, optionsJson, currentUser
   const duplicateHandling = options.duplicateHandling || 'skip'; // 'skip' | 'update' | 'both'
   const defaultAssignedTo = options.defaultAssignedTo || currentUser._id;
 
+  // Determine branch for import safely
+  let importBranchId = null;
+  if (!isAdmin(currentUser)) {
+    importBranchId = getUserBranchId(currentUser);
+    if (!importBranchId) {
+      throw new Error('Your account is not assigned to a branch. Cannot import leads.');
+    }
+  } else if (options.branchId) {
+    importBranchId = options.branchId;
+  }
+
   const workbook = XLSX.readFile(filePath, { cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[firstSheetName];
@@ -130,8 +144,12 @@ const processLeadImport = async (filePath, mappingJson, optionsJson, currentUser
     throw new Error('No data rows found to import.');
   }
 
-  // Pre-load all active users for employee assignment matching
-  const users = await User.find({ status: 'active' }).select('_id name email employeeId').lean();
+  // Pre-load active users for employee assignment matching (scoped to branch for HR)
+  const userQuery = { status: 'active' };
+  if (!isAdmin(currentUser)) {
+    userQuery.branchId = importBranchId;
+  }
+  const users = await User.find(userQuery).select('_id name email employeeId').lean();
   const userMap = {};
   users.forEach((u) => {
     userMap[u._id.toString()] = u._id;
@@ -262,6 +280,7 @@ const processLeadImport = async (filePath, mappingJson, optionsJson, currentUser
     const newDoc = {
       mobileNumber: normalizedMobile,
       canonicalPhoneKey: canonicalKey,
+      branchId: importBranchId,
       customerName: leadItem.customerName ? String(leadItem.customerName).trim() : '',
       alternateMobileNumber: leadItem.alternateMobileNumber ? normalizePhoneNumber(leadItem.alternateMobileNumber) : '',
       companyName: leadItem.companyName ? String(leadItem.companyName).trim() : '',
@@ -432,6 +451,7 @@ const generateExcelExport = async (currentUser, queryParams) => {
   const query = buildLeadFilterQuery(currentUser, queryParams);
 
   const leads = await Lead.find(query)
+    .populate('branchId', 'name code')
     .populate('assignedTo', 'name employeeId email')
     .populate('createdBy', 'name employeeId')
     .sort({ createdAt: -1 })
@@ -439,6 +459,8 @@ const generateExcelExport = async (currentUser, queryParams) => {
 
   const exportHeaders = [
     'Lead ID',
+    'Branch Name',
+    'Branch Code',
     'Customer Name',
     'Mobile Number',
     'Alternate Mobile',
@@ -467,6 +489,8 @@ const generateExcelExport = async (currentUser, queryParams) => {
 
   const rows = leads.map((l) => [
     sanitizeCellValue(l._id),
+    sanitizeCellValue(l.branchId ? l.branchId.name : 'Unassigned'),
+    sanitizeCellValue(l.branchId ? l.branchId.code : ''),
     sanitizeCellValue(l.customerName || ''),
     sanitizeCellValue(l.mobileNumber || ''),
     sanitizeCellValue(l.alternateMobileNumber || ''),
