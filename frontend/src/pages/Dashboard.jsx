@@ -16,7 +16,6 @@ import LeadTrendChart from '../components/dashboard/LeadTrendChart';
 import PartsDemandChart from '../components/dashboard/PartsDemandChart';
 import EmployeePerformanceChart from '../components/dashboard/EmployeePerformanceChart';
 import BranchSelector from '../components/common/BranchSelector';
-import BranchPerformanceOverview from '../components/dashboard/BranchPerformanceOverview';
 import BranchDetailsSection from '../components/dashboard/BranchDetailsSection';
 
 function MetricCard({ label, value, color, icon: Icon, onClick }) {
@@ -198,18 +197,6 @@ export default function Dashboard() {
           color="text-emerald-600 dark:text-emerald-400" icon={CheckCircle2}
           onClick={() => navigate(getLeadsLink('status=Converted'))} />
       </div>
-
-      {/* Admin Dedicated Branch Performance Overview */}
-      {isAdmin && (
-        <BranchPerformanceOverview
-          data={branchOverview}
-          loading={branchOverviewLoading}
-          error={branchOverviewError}
-          onRetry={loadBranchOverview}
-          onSelectBranch={(bId) => setSelectedBranch(bId)}
-          selectedBranch={selectedBranch}
-        />
-      )}
 
       {/* Interactive Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
