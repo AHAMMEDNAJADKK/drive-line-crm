@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Car,
   CheckCircle2,
   Truck
 } from 'lucide-react';
@@ -120,30 +119,52 @@ export default function AppLayout() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700/50`}>
-        <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Car className="w-5 h-5 text-white" />
-        </div>
-
-        {!collapsed && <div>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">
-            Drive Line
-          </p>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Automobile Parts CRM
-          </p>
-        </div>}
-
-        {!mobile && (
+        {collapsed ? (
           <button
             type="button"
-            onClick={() => setSidebarCollapsed((value) => !value)}
-            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => setSidebarCollapsed(false)}
+            className="flex items-center justify-center p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            <img
+              src="/drive-line-logo-mark.svg"
+              alt="Drive Line"
+              className="w-9 h-9 object-contain dark:hidden"
+            />
+            <img
+              src="/drive-line-logo-mark-dark.svg"
+              alt="Drive Line"
+              className="w-9 h-9 object-contain hidden dark:block"
+            />
           </button>
+        ) : (
+          <>
+            <div className="flex items-center min-w-0">
+              <img
+                src="/drive-line-logo.svg"
+                alt="Drive Line"
+                className="h-8 max-w-[155px] w-auto object-contain dark:hidden"
+              />
+              <img
+                src="/drive-line-logo-dark.svg"
+                alt="Drive Line"
+                className="h-8 max-w-[155px] w-auto object-contain hidden dark:block"
+              />
+            </div>
+
+            {!mobile && (
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(true)}
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+          </>
         )}
       </div>
 

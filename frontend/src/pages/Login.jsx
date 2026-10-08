@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Car,
   Eye,
   EyeOff,
   Loader2
@@ -57,17 +56,16 @@ export default function Login() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
-            <Car className="w-7 h-7 text-white" />
-          </div>
-
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Drive Line
-          </h1>
-
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Automobile Parts CRM
-          </p>
+          <img
+            src="/drive-line-logo.svg"
+            alt="Drive Line"
+            className="h-14 sm:h-16 w-auto max-w-[280px] object-contain dark:hidden"
+          />
+          <img
+            src="/drive-line-logo-dark.svg"
+            alt="Drive Line"
+            className="h-14 sm:h-16 w-auto max-w-[280px] object-contain hidden dark:block"
+          />
         </div>
 
         {/* Login Card */}
