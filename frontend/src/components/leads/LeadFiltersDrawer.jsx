@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Filter } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useBranch } from '../../context/BranchContext';
 import { getActiveEmployeesApi } from '../../services/employeeApi';
-import { getActiveBranchesListApi } from '../../services/branchApi';
 import {
   LEAD_STATUSES,
   CLOSED_LEAD_STATUSES,
@@ -48,22 +48,16 @@ function FilterSelect({ label, value, onChange, options }) {
 
 export default function LeadFiltersDrawer({ isOpen, onClose, filters = {}, onChange, onApply, isClosed = false }) {
   const { user } = useAuth();
+  const { selectedBranch } = useBranch();
   const [draft, setDraft] = useState(filters);
 
   useEffect(() => {
     setDraft(filters || {});
   }, [filters, isOpen]);
 
-  const { data: branchData } = useQuery({
-    queryKey: ['active-branches-list'],
-    queryFn: () => getActiveBranchesListApi(),
-    enabled: isOpen && user?.role === 'admin',
-  });
-  const branches = branchData?.data?.data || [];
-
   const { data: empData } = useQuery({
-    queryKey: ['active-employees', draft.branchId],
-    queryFn: () => getActiveEmployeesApi(draft.branchId ? { branchId: draft.branchId } : {}),
+    queryKey: ['active-employees', selectedBranch],
+    queryFn: () => getActiveEmployeesApi(selectedBranch ? { branchId: selectedBranch } : {}),
     enabled: isOpen,
   });
   const employees = empData?.data?.data || [];
@@ -125,25 +119,6 @@ export default function LeadFiltersDrawer({ isOpen, onClose, filters = {}, onCha
 
         {/* Filters */}
         <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-4 space-y-4">
-          {user?.role === 'admin' && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                Branch
-              </label>
-              <select
-                value={draft.branchId || ''}
-                onChange={(e) => update('branchId', e.target.value || undefined)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-              >
-                <option value="">All Branches</option>
-                {branches.map((b) => (
-                  <option key={b._id} value={b._id}>
-                    {b.name} ({b.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <FilterSelect
             label="Status"

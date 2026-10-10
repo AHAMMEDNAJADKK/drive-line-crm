@@ -6,22 +6,29 @@ export default function BranchSelector({
   value = '',
   onChange,
   includeAll = true,
+  showAll,
   allLabel = 'All Branches',
   includeUnassigned = true,
   disabled = false,
   className = '',
-  size = 'md'
+  size = 'md',
+  branches: externalBranches = null
 }) {
-  const [branches, setBranches] = useState([]);
+  const [internalBranches, setInternalBranches] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (externalBranches && Array.isArray(externalBranches) && externalBranches.length > 0) {
+      setInternalBranches(externalBranches);
+      return;
+    }
+
     let mounted = true;
     setLoading(true);
     getActiveBranchesListApi()
       .then((res) => {
         if (mounted) {
-          setBranches(res.data?.data || []);
+          setInternalBranches(res.data?.data || []);
         }
       })
       .catch((err) => {
@@ -51,8 +58,8 @@ export default function BranchSelector({
         aria-label="Filter by branch"
         className={`appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-800 dark:text-gray-200 font-medium hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${sizeClasses}`}
       >
-        {includeAll && <option value="">{allLabel}</option>}
-        {branches.map((b) => (
+        {(showAll !== undefined ? showAll : includeAll) && <option value="">{allLabel}</option>}
+        {internalBranches.map((b) => (
           <option key={b._id} value={b._id}>
             {b.name} ({b.code})
           </option>

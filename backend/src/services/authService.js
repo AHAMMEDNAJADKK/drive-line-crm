@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+require('../models/Branch');
 
 const generateToken = (id) => {
   if (!process.env.JWT_SECRET) {
@@ -31,7 +32,7 @@ const login = async ({ identifier, password }) => {
     throw new Error('Invalid credentials');
   }
 
-  if (!['admin', 'hr', 'employee'].includes(user.role)) {
+  if (!['superadmin', 'admin', 'hr', 'employee'].includes(user.role)) {
     throw new Error('This account role is no longer active. Please contact an administrator.');
   }
 
@@ -242,6 +243,7 @@ const updateProfile = async (
     }
 
     user.password = newPassword;
+    user.mustChangePassword = false;
   }
 
   await user.save();

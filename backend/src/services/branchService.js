@@ -361,6 +361,33 @@ const assignUserToBranch = async (userId, branchId) => {
   return user.toJSON();
 };
 
+/**
+ * Safely delete branch only if no associated business records exist
+ */
+const deleteBranch = async (id) => {
+  assertObjectId(id, 'Branch ID');
+
+  const [leadsCount, usersCount] = await Promise.all([
+    Lead.countDocuments({ branchId: id }),
+    User.countDocuments({ branchId: id })
+  ]);
+
+  if (leadsCount > 0 || usersCount > 0) {
+    const error = new Error(
+      `Cannot delete branch: Branch has ${leadsCount} lead(s) and ${usersCount} assigned staff member(s). Please deactivate the branch or reassign records first.`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const branch = await Branch.findByIdAndDelete(id);
+  if (!branch) {
+    throw new Error('Branch not found');
+  }
+
+  return { message: 'Branch deleted successfully' };
+};
+
 module.exports = {
   listBranches,
   getActiveBranchesList,
@@ -368,5 +395,6 @@ module.exports = {
   createBranch,
   updateBranch,
   toggleBranchStatus,
-  assignUserToBranch
+  assignUserToBranch,
+  deleteBranch
 };

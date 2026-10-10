@@ -1,4 +1,4 @@
-const { isAdmin, isHrStaff, isEmployee } = require('./roles');
+const { isSuperAdmin, isAdmin, isAnyAdmin, isHrStaff, isEmployee } = require('./roles');
 
 /**
  * Extract clean string representation of a branch ID from an ObjectId or populated branch object.
@@ -21,12 +21,13 @@ const getUserBranchId = (user) => {
 
 /**
  * Check if user has access to a specific branch.
- * Admin has access to all branches.
+ * Super Admin has access to all branches globally.
+ * Admin has access to all branches or their assigned branch scope.
  * HR and Employees only have access to their assigned branch.
  */
 const hasBranchAccess = (branchRef, user) => {
   if (!user) return false;
-  if (isAdmin(user)) return true;
+  if (isAnyAdmin(user)) return true;
 
   const userBranch = getUserBranchId(user);
   if (!userBranch) return false;
@@ -46,8 +47,8 @@ const assertBranchAccess = (branchRef, user, action = 'access') => {
     throw error;
   }
 
-  // Admins have unrestricted access to all branch data
-  if (isAdmin(user)) {
+  // Admins and Super Admins have unrestricted access across branches for CRM operations
+  if (isAnyAdmin(user)) {
     return;
   }
 
@@ -70,9 +71,10 @@ const assertBranchAccess = (branchRef, user, action = 'access') => {
 /**
  * Helper to build a MongoDB branch filter condition based on user role and optional filter param.
  *
- * For Admin:
- *   - If requestedBranchId is provided and valid (not 'all', not empty), filters by that branch.
- *   - If requestedBranchId is 'unassigned', filters by { $or: [{ branchId: null }, { branchId: { $exists: false } }] }
+ * For Super Admin & Admin:
+ *   - Can switch branches or view all branches across operational records.
+ *   - If requestedBranchId is provided and valid, filters by that branch.
+ *   - If requestedBranchId is 'unassigned', filters by unassigned/null.
  *   - Otherwise returns empty filter (all branches).
  *
  * For HR / Employee:
@@ -81,7 +83,7 @@ const assertBranchAccess = (branchRef, user, action = 'access') => {
 const getBranchFilter = (user, requestedBranchId) => {
   if (!user) return { branchId: null };
 
-  if (isAdmin(user)) {
+  if (isAnyAdmin(user)) {
     if (requestedBranchId === 'unassigned') {
       return { $or: [{ branchId: null }, { branchId: { $exists: false } }] };
     }

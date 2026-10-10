@@ -126,6 +126,22 @@ const assignUser = async (req, res, next) => {
   }
 };
 
+const deleteBranch = async (req, res, next) => {
+  try {
+    const result = await branchService.deleteBranch(req.params.id);
+    return res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 400;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Failed to delete branch'
+    });
+  }
+};
+
 module.exports = {
   listBranches,
   getActiveList,
@@ -133,5 +149,6 @@ module.exports = {
   createBranch,
   updateBranch,
   toggleStatus,
-  assignUser
+  assignUser,
+  deleteBranch
 };

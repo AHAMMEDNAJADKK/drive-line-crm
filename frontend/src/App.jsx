@@ -6,6 +6,7 @@ import {
 } from 'react-router-dom';
 
 import { useAuth } from './context/AuthContext';
+import { BranchProvider } from './context/BranchContext';
 
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './layouts/ProtectedRoute';
@@ -14,6 +15,8 @@ import Login from './pages/Login';
 import RegisterAdmin from './pages/RegisterAdmin';
 
 import Dashboard from './pages/Dashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import SuperAdminUsers from './pages/SuperAdminUsers';
 import Leads from './pages/Leads';
 import ClosedLeads from './pages/ClosedLeads';
 import LeadDetail from './pages/LeadDetail';
@@ -26,6 +29,12 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import HRDashboard from './pages/HRDashboard';
 import Branches from './pages/Branches';
+
+function getHomeRoute(role) {
+  if (role === 'superadmin') return '/super-admin';
+  if (role === 'hr') return '/hr';
+  return '/dashboard';
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -51,7 +60,7 @@ function AppRoutes() {
         path="/login"
         element={
           user ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to={getHomeRoute(user.role)} replace />
           ) : (
             <Login />
           )
@@ -63,7 +72,7 @@ function AppRoutes() {
         path="/register-admin"
         element={
           user ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to={getHomeRoute(user.role)} replace />
           ) : (
             <RegisterAdmin />
           )
@@ -73,9 +82,23 @@ function AppRoutes() {
       {/* Protected — all authenticated users */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
+          {/* Super Admin developer control panel & user management */}
+          <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
+            <Route path="/super-admin" element={<SuperAdminDashboard />} />
+            <Route path="/super-admin/users" element={<SuperAdminUsers />} />
+          </Route>
+
           <Route
             path="/dashboard"
-              element={user?.role === 'hr' ? <Navigate to="/hr" replace /> : <Dashboard />}
+            element={
+              user?.role === 'superadmin' ? (
+                <Navigate to="/super-admin" replace />
+              ) : user?.role === 'hr' ? (
+                <Navigate to="/hr" replace />
+              ) : (
+                <Dashboard />
+              )
+            }
           />
 
           <Route
@@ -116,16 +139,16 @@ function AppRoutes() {
           />
 
           <Route
-              element={<ProtectedRoute allowedRoles={['hr']} />}
+            element={<ProtectedRoute allowedRoles={['hr']} />}
           >
             <Route path="/hr" element={<HRDashboard />} />
           </Route>
 
-          {/* Admin branch management */}
+          {/* Admin & Super Admin branch management */}
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={['admin']}
+                allowedRoles={['superadmin', 'admin']}
               />
             }
           >
@@ -135,11 +158,11 @@ function AppRoutes() {
             />
           </Route>
 
-          {/* Admin and HR employee management */}
+          {/* Admin, Super Admin, and HR employee management */}
           <Route
             element={
               <ProtectedRoute
-                 allowedRoles={['admin', 'hr']}
+                allowedRoles={['superadmin', 'admin', 'hr']}
               />
             }
           >
@@ -159,7 +182,7 @@ function AppRoutes() {
       {/* Redirects */}
       <Route
         path="/"
-        element={<Navigate to="/dashboard" replace />}
+        element={<Navigate to={user ? getHomeRoute(user.role) : '/login'} replace />}
       />
 
       <Route
@@ -173,7 +196,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <BranchProvider>
+        <AppRoutes />
+      </BranchProvider>
     </BrowserRouter>
   );
 }

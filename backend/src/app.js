@@ -18,6 +18,7 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
 const branchRoutes = require('./routes/branchRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 
 const app = express();
 
@@ -146,6 +147,9 @@ app.use('/api/suppliers', supplierRoutes);
 
 // Branches
 app.use('/api/branches', branchRoutes);
+
+// Super Admin / Developer Control Panel
+app.use('/api/superadmin', superAdminRoutes);
 
 // ============================================================
 // 404 HANDLER

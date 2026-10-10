@@ -1,10 +1,18 @@
 const employeeService = require('../services/employeeService');
 
-const rejectHrAdminAssignment = (req, res) => {
-  if (req.user?.role === 'hr' && req.body?.role === 'admin') {
+const rejectUnauthorizedRoleAssignment = (req, res) => {
+  if (req.user?.role !== 'superadmin' && req.body?.role === 'superadmin') {
     res.status(403).json({
       success: false,
-      message: 'HR cannot assign the admin role'
+      message: 'Only Super Admin can grant Super Admin privileges'
+    });
+    return true;
+  }
+
+  if (req.user?.role === 'hr' && (req.body?.role === 'admin' || req.body?.role === 'superadmin')) {
+    res.status(403).json({
+      success: false,
+      message: 'HR cannot assign administrator roles'
     });
     return true;
   }
@@ -77,7 +85,7 @@ const getEmployee = async (req, res, next) => {
 };
 
 const createEmployee = async (req, res, next) => {
-  if (rejectHrAdminAssignment(req, res)) return;
+  if (rejectUnauthorizedRoleAssignment(req, res)) return;
 
   try {
     const employee =
@@ -136,7 +144,7 @@ const createEmployee = async (req, res, next) => {
 };
 
 const updateEmployee = async (req, res, next) => {
-  if (rejectHrAdminAssignment(req, res)) return;
+  if (rejectUnauthorizedRoleAssignment(req, res)) return;
 
   try {
     const employee =

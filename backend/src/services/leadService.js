@@ -8,7 +8,7 @@ const {
   getCanonicalPhoneKey,
   isValidPhoneNumber
 } = require('../utils/phoneUtils');
-const { isEmployee, isAdmin, isHrStaff } = require('../utils/roles');
+const { isEmployee, isAdmin, isAnyAdmin, isSuperAdmin, isHrStaff } = require('../utils/roles');
 const { assertLeadAccess, assertEmployeeLeadAccess } = require('../utils/leadAccess');
 const { getBranchFilter, getUserBranchId, assertBranchAccess } = require('../utils/branchAccess');
 const {
@@ -1391,7 +1391,7 @@ const deleteLead = async (
   assertEmployeeLeadAccess(lead, currentUser, 'modify');
 
   if (permanent === true || permanent === 'true') {
-    if (currentUser.role !== 'admin') {
+    if (!isAnyAdmin(currentUser)) {
       throw new Error(
         'Only administrators can permanently delete leads'
       );

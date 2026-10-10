@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { getDashboardApi, getBranchOverviewApi } from '../services/dashboardApi';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import { LoadingState, ErrorState } from '../components/common/States';
 import { formatDate, formatFollowUpDate, whatsappLink, telLink, getInitials } from '../utils/formatters';
 import { STATUS_COLORS } from '../utils/constants';
@@ -15,7 +16,6 @@ import LeadStatusChart from '../components/dashboard/LeadStatusChart';
 import LeadTrendChart from '../components/dashboard/LeadTrendChart';
 import PartsDemandChart from '../components/dashboard/PartsDemandChart';
 import EmployeePerformanceChart from '../components/dashboard/EmployeePerformanceChart';
-import BranchSelector from '../components/common/BranchSelector';
 import BranchDetailsSection from '../components/dashboard/BranchDetailsSection';
 
 function MetricCard({ label, value, color, icon: Icon, onClick }) {
@@ -63,12 +63,11 @@ function FollowupCard({ lead, onOpen }) {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { selectedBranch } = useBranch();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const [selectedBranch, setSelectedBranch] = useState('');
 
   // Admin branch overview analytics
   const [branchOverview, setBranchOverview] = useState(null);
@@ -76,7 +75,7 @@ export default function Dashboard() {
   const [branchOverviewError, setBranchOverviewError] = useState('');
 
   const isEmployee = user?.role === 'employee';
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   const loadBranchOverview = async () => {
     if (!isAdmin) return;
@@ -163,24 +162,13 @@ export default function Dashboard() {
             )}
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {user?.role === 'admin' && selectedBranch
+            {isAdmin && selectedBranch
               ? 'Showing metrics for selected branch.'
               : user?.branchId
               ? `Here's what's happening with ${user.branchId.name} leads today.`
               : "Here's what's happening with your leads today."}
           </p>
         </div>
-
-        {user?.role === 'admin' && (
-          <div className="flex items-center gap-2">
-            <BranchSelector
-              value={selectedBranch}
-              onChange={(newBranch) => setSelectedBranch(newBranch)}
-              showAll={true}
-              allLabel="Consolidated (All Branches)"
-            />
-          </div>
-        )}
       </div>
 
       {/* Main metrics */}
@@ -342,7 +330,6 @@ export default function Dashboard() {
           loading={branchOverviewLoading}
           error={branchOverviewError}
           onRetry={loadBranchOverview}
-          onSelectBranch={(bId) => setSelectedBranch(bId)}
           selectedBranch={selectedBranch}
         />
       )}

@@ -17,8 +17,14 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles) {
+    const isAllowed =
+      allowedRoles.includes(user.role) ||
+      (user.role === 'superadmin' && allowedRoles.includes('admin'));
+
+    if (!isAllowed) {
+      return <Navigate to={user.role === 'superadmin' ? '/super-admin' : '/dashboard'} replace />;
+    }
   }
 
   return <Outlet />;
