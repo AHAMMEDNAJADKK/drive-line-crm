@@ -45,8 +45,8 @@ export default function BranchSelector({
 
   const sizeClasses =
     size === 'sm'
-      ? 'text-xs py-1.5 pl-8 pr-3'
-      : 'text-sm py-2 pl-9 pr-8';
+      ? 'text-xs h-9 pl-8 pr-8'
+      : 'text-sm h-10 pl-9 pr-8';
 
   return (
     <div className={`relative inline-flex items-center ${className}`}>
@@ -56,7 +56,7 @@ export default function BranchSelector({
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled || loading}
         aria-label="Filter by branch"
-        className={`appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-800 dark:text-gray-200 font-medium hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${sizeClasses}`}
+        className={`w-full appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 rounded-xl text-gray-800 dark:text-gray-200 font-medium hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed truncate ${sizeClasses}`}
       >
         {(showAll !== undefined ? showAll : includeAll) && <option value="">{allLabel}</option>}
         {internalBranches.map((b) => (

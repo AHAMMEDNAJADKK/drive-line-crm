@@ -311,78 +311,86 @@ export default function AppLayout() {
       {/* Main content area */}
       <div className={`flex flex-col min-h-screen transition-all duration-200 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
         {/* Top nav */}
-        <nav className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700/50 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <nav className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700/50 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="lg:hidden h-9 w-9 inline-flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Open sidebar"
               >
                 <Menu className="w-5 h-5" />
               </button>
 
               {/* Breadcrumb */}
-              <div className="hidden sm:flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-medium text-gray-900 dark:text-gray-100">
+              <div className="hidden sm:flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 truncate">
+                <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                   {getPageLabel()}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Quick Add */}
-              {user?.role !== 'hr' && <button
-                onClick={() => setQuickLeadOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-500 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Quick Lead
-              </button>}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Action controls cluster (Quick Lead, Branch Selector, Theme Toggle) shifted slightly left */}
+              <div className="flex items-center gap-2 sm:gap-2.5 mr-1 sm:mr-2">
+                {/* Quick Add */}
+                {user?.role !== 'hr' && (
+                  <button
+                    onClick={() => setQuickLeadOpen(true)}
+                    className="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-xl bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-500 transition-colors shadow-sm shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Quick Lead</span>
+                  </button>
+                )}
 
-              {/* HR-only Passport Notification Bell */}
-              <NotificationBell />
+                {/* HR-only Passport Notification Bell */}
+                <NotificationBell />
 
-              {/* Global Branch Selector for Super Admin and Admin (Single Source of Truth) */}
-              {canSwitchBranches ? (
-                <div className="flex items-center">
+                {/* Global Branch Selector for Super Admin and Admin (Single Source of Truth) */}
+                {canSwitchBranches ? (
                   <BranchSelector
                     value={selectedBranch}
                     onChange={(val) => setSelectedBranch(val)}
                     showAll={true}
-                    allLabel="All Branches (Consolidated)"
+                    allLabel="All Branches"
                     branches={branches}
                     size="sm"
-                    className="w-36 sm:w-52 md:w-60"
+                    className="w-32 sm:w-44 md:w-48 lg:w-52 shrink-0"
                   />
-                </div>
-              ) : user?.branchId ? (
-                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                  <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{user.branchId.code || user.branchId.name}</span>
-                </span>
-              ) : null}
+                ) : user?.branchId ? (
+                  <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 h-9 rounded-xl text-xs font-medium bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shrink-0">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span className="truncate max-w-[120px]">{user.branchId.code || user.branchId.name}</span>
+                  </span>
+                ) : null}
 
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-              </button>
+                {/* Light/Dark mode toggle */}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 shrink-0"
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-5 w-5" />
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
 
+              {/* Vertical divider between controls and profile */}
+              <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block shrink-0" />
 
               {/* User avatar */}
               <NavLink
                 to="/profile"
-                className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="inline-flex items-center p-0.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0"
+                title="My Profile"
               >
-                <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm">
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
               </NavLink>
