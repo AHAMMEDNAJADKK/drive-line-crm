@@ -38,6 +38,18 @@ const seed = async () => {
 
   const seeds = [
     {
+      name: process.env.SUPERADMIN_NAME || 'Super Admin',
+      email: (process.env.SUPERADMIN_EMAIL || 'superadmin@gmail.com').toLowerCase().trim(),
+      phone: process.env.SUPERADMIN_PHONE || '+91 9999999999',
+      employeeId: (process.env.SUPERADMIN_EMPLOYEE_ID || 'SA001').toUpperCase().trim(),
+      role: 'superadmin',
+      status: 'active',
+      password: process.env.SUPERADMIN_PASSWORD || 'superadmin@111',
+      branch: '',
+      branchId: null,
+      mustChangePassword: true
+    },
+    {
       name: 'Admin User',
       email: 'admin@driveline.com',
       phone: '9000000001',

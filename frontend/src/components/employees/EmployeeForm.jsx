@@ -64,7 +64,7 @@ export default function EmployeeForm({
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (currentUser?.role === 'admin') {
+    if (['admin', 'superadmin'].includes(currentUser?.role)) {
       getActiveBranchesListApi()
         .then((res) => setBranches(res.data?.data || []))
         .catch(() => setBranches([]));
@@ -283,7 +283,7 @@ export default function EmployeeForm({
     }
 
     if (
-      currentUser?.role === 'admin' &&
+      ['admin', 'superadmin'].includes(currentUser?.role) &&
       ['hr', 'employee'].includes(form.role) &&
       !form.branchId
     ) {
@@ -355,10 +355,15 @@ export default function EmployeeForm({
   };
 
   const roleLabels = {
+    superadmin: 'Super Admin',
     admin: 'Admin',
     hr: 'HR',
     employee: 'Employee'
   };
+
+  const allowedRoles = EMPLOYEE_ROLES.filter(
+    (role) => role !== 'superadmin' || currentUser?.role === 'superadmin'
+  );
 
   return (
     <>
@@ -493,7 +498,7 @@ export default function EmployeeForm({
                 onChange={set('role')}
                 className={FIELD_CLASS}
               >
-                {EMPLOYEE_ROLES.map((role) => (
+                {allowedRoles.map((role) => (
                   <option
                     key={role}
                     value={role}
@@ -543,17 +548,17 @@ export default function EmployeeForm({
             {/* Branch */}
             <div>
               <label className={LABEL_CLASS}>
-                Branch {currentUser?.role === 'admin' && ['hr', 'employee'].includes(form.role) && <span className="text-red-500">*</span>}
+                Branch {['admin', 'superadmin'].includes(currentUser?.role) && ['hr', 'employee'].includes(form.role) && <span className="text-red-500">*</span>}
               </label>
 
-              {currentUser?.role === 'admin' ? (
+              {['admin', 'superadmin'].includes(currentUser?.role) ? (
                 <select
                   value={form.branchId || ''}
                   onChange={handleBranchChange}
                   className={`${FIELD_CLASS} ${errors.branchId ? 'border-red-500' : ''}`}
                 >
                   <option value="">
-                    {form.role === 'admin' ? '— All Branches / None —' : '— Select Branch —'}
+                    {['admin', 'superadmin'].includes(form.role) ? '— All Branches / None —' : '— Select Branch —'}
                   </option>
                   {branches.map((b) => (
                     <option key={b._id} value={b._id}>

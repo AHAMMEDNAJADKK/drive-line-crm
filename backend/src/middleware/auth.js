@@ -90,14 +90,22 @@ const authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Forbidden. Role '${req.user.role}' is not authorized to access this resource.`
-      });
+    const userRole = req.user.role;
+
+    // Direct match
+    if (roles.includes(userRole)) {
+      return next();
     }
 
-    next();
+    // Super Admin inherits access for any endpoint that permits 'admin'
+    if (userRole === 'superadmin' && roles.includes('admin')) {
+      return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: `Forbidden. Role '${userRole}' is not authorized to access this resource.`
+    });
   };
 };
 

@@ -20,6 +20,7 @@ import {
 } from '../services/leadApi';
 
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 
 import LeadTable from '../components/leads/LeadTable';
 import LeadFiltersDrawer from '../components/leads/LeadFiltersDrawer';
@@ -28,7 +29,6 @@ import ImportModal from '../components/leads/ImportModal';
 
 import SearchInput from '../components/common/SearchInput';
 import Pagination from '../components/common/Pagination';
-import BranchSelector from '../components/common/BranchSelector';
 import {
   LoadingState,
   ErrorState,
@@ -41,8 +41,10 @@ const PAGE_LIMIT = 25;
 
 export default function Leads({ isClosed = false, isDeletedView = false }) {
   const { user } = useAuth();
+  const { selectedBranch } = useBranch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isAdminOrSuperAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   // =========================================================
   // STATE
@@ -116,7 +118,10 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
       q.dateTo = searchParams.get('dateTo');
     }
 
-    if (searchParams.get('branchId')) {
+    // Navbar selected branch is the single source of truth for viewing context
+    if (selectedBranch && selectedBranch !== 'all') {
+      q.branchId = selectedBranch;
+    } else if (searchParams.get('branchId')) {
       q.branchId = searchParams.get('branchId');
     }
 
@@ -124,7 +129,7 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
     q.limit = PAGE_LIMIT;
 
     return q;
-  }, [searchParams, isClosed, isDeletedView]);
+  }, [searchParams, isClosed, isDeletedView, selectedBranch]);
 
   // =========================================================
   // LOAD LEADS
@@ -550,17 +555,6 @@ export default function Leads({ isClosed = false, isDeletedView = false }) {
             placeholder="Search mobile, name, part, vehicle…"
           />
         </div>
-
-        {user?.role === 'admin' && (
-          <div className="w-48 sm:w-56 shrink-0">
-            <BranchSelector
-              value={searchParams.get('branchId') || ''}
-              onChange={(val) => setParam('branchId', val)}
-              showAll={true}
-              allLabel="All Branches"
-            />
-          </div>
-        )}
 
         <button
           type="button"

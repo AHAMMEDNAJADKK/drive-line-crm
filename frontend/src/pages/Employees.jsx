@@ -6,17 +6,18 @@ import {
   toggleEmployeeStatusApi, resetEmployeePasswordApi
 } from '../services/employeeApi';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import EmployeeTable from '../components/employees/EmployeeTable';
 import EmployeeForm from '../components/employees/EmployeeForm';
 import SearchInput from '../components/common/SearchInput';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
-import BranchSelector from '../components/common/BranchSelector';
 import { LoadingState, ErrorState, EmptyState } from '../components/common/States';
 import toast from 'react-hot-toast';
 
 export default function Employees() {
   const { user } = useAuth();
+  const { selectedBranch } = useBranch();
   const navigate = useNavigate();
 
   const [employees, setEmployees] = useState([]);
@@ -24,7 +25,6 @@ export default function Employees() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +46,7 @@ export default function Employees() {
         search: search || undefined,
         role: roleFilter || undefined,
         status: statusFilter || undefined,
-        branchId: branchFilter || undefined,
+        branchId: (selectedBranch && selectedBranch !== 'all') ? selectedBranch : undefined,
         page,
         limit: 15,
       });
@@ -67,7 +67,7 @@ export default function Employees() {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, statusFilter, branchFilter, page]);
+  }, [search, roleFilter, statusFilter, selectedBranch, page]);
 
   useEffect(() => {
     fetchEmployees();
@@ -123,7 +123,7 @@ export default function Employees() {
     }
   };
 
-  const canManageEmployees = ['admin', 'hr'].includes(user?.role);
+  const canManageEmployees = ['superadmin', 'admin', 'hr'].includes(user?.role);
 
   return (
     <div className="space-y-4">
@@ -171,6 +171,7 @@ export default function Employees() {
           className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm px-3 py-2.5"
         >
           <option value="">All Roles</option>
+          {user?.role === 'superadmin' && <option value="superadmin">Super Admin</option>}
           <option value="admin">Admin</option>
           <option value="hr">HR</option>
           <option value="employee">Employee</option>
@@ -187,20 +188,6 @@ export default function Employees() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-
-        {user?.role === 'admin' && (
-          <div className="w-52 shrink-0">
-            <BranchSelector
-              value={branchFilter}
-              onChange={(val) => {
-                setBranchFilter(val);
-                setPage(1);
-              }}
-              showAll={true}
-              allLabel="All Branches"
-            />
-          </div>
-        )}
       </div>
 
       {/* Main Content */}

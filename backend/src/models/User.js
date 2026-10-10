@@ -71,7 +71,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'hr', 'employee'],
+      enum: ['superadmin', 'admin', 'hr', 'employee'],
       default: 'employee',
       index: true
     },
@@ -86,6 +86,10 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: 6,
       select: false
+    },
+    mustChangePassword: {
+      type: Boolean,
+      default: false
     },
     lastLogin: {
       type: Date,

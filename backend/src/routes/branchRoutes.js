@@ -19,5 +19,6 @@ router.put('/:id', ctrl.updateBranch);
 router.patch('/:id', ctrl.updateBranch);
 router.patch('/:id/status', ctrl.toggleStatus);
 router.post('/:id/assign-user', ctrl.assignUser);
+router.delete('/:id', ctrl.deleteBranch);
 
 module.exports = router;

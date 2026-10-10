@@ -16,15 +16,19 @@ import {
   ChevronRight,
   Plus,
   CheckCircle2,
-  Truck
+  Truck,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import toast from 'react-hot-toast';
 import QuickLeadModal from '../components/leads/QuickLeadModal';
 import NotificationBell from '../components/notifications/NotificationBell';
+import BranchSelector from '../components/common/BranchSelector';
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
+  const { selectedBranch, setSelectedBranch, branches, canSwitchBranches } = useBranch();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,7 +66,19 @@ export default function AppLayout() {
     navigate('/login');
   };
 
-  const navItems = user?.role === 'hr'
+  const navItems = user?.role === 'superadmin'
+    ? [
+        { to: '/super-admin', icon: ShieldCheck, label: 'Control Panel' },
+        { to: '/super-admin/users', icon: UserCog, label: 'Users & Roles' },
+        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/leads', icon: UserSquare2, label: 'Leads' },
+        { to: '/closed-leads', icon: CheckCircle2, label: 'Closed Leads' },
+        { to: '/branches', icon: Building2, label: 'Branches' },
+        { to: '/employees', icon: Users, label: 'Employees' },
+        { to: '/customers', icon: UserRound, label: 'Customers' },
+        { to: '/suppliers', icon: Truck, label: 'Suppliers' }
+      ]
+    : user?.role === 'hr'
     ? [
         { to: '/hr', icon: UserCog, label: 'HR' },
         { to: '/employees', icon: Users, label: 'Employees' }
@@ -89,6 +105,14 @@ export default function AppLayout() {
     }`;
 
   const getPageLabel = () => {
+    if (location.pathname.startsWith('/super-admin/users')) {
+      return 'User & Role Management';
+    }
+
+    if (location.pathname.startsWith('/super-admin')) {
+      return 'Developer Control Panel';
+    }
+
     if (location.pathname.startsWith('/branches')) {
       return 'Branches';
     }
@@ -215,14 +239,24 @@ export default function AppLayout() {
             </p>
 
             <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
-              <span>{user?.role}</span>
-              {user?.branchId ? (
+              {user?.role === 'superadmin' ? (
+                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                  Super Admin
+                </span>
+              ) : (
+                <span>{user?.role}</span>
+              )}
+              {user?.role === 'superadmin' ? (
+                <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 truncate">
+                  • {selectedBranch ? (branches.find((b) => b._id === selectedBranch)?.code || 'Branch') : 'All Branches'}
+                </span>
+              ) : user?.branchId ? (
                 <span className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 truncate">
                   • {user.branchId.name || user.branchId.code}
                 </span>
               ) : user?.role === 'admin' ? (
                 <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
-                  • All Branches
+                  • {selectedBranch ? (branches.find((b) => b._id === selectedBranch)?.code || 'Branch') : 'All Branches'}
                 </span>
               ) : null}
             </div>
@@ -308,16 +342,23 @@ export default function AppLayout() {
               {/* HR-only Passport Notification Bell */}
               <NotificationBell />
 
-              {/* Branch indicator */}
-              {user?.branchId ? (
+              {/* Global Branch Selector for Super Admin and Admin (Single Source of Truth) */}
+              {canSwitchBranches ? (
+                <div className="flex items-center">
+                  <BranchSelector
+                    value={selectedBranch}
+                    onChange={(val) => setSelectedBranch(val)}
+                    showAll={true}
+                    allLabel="All Branches (Consolidated)"
+                    branches={branches}
+                    size="sm"
+                    className="w-36 sm:w-52 md:w-60"
+                  />
+                </div>
+              ) : user?.branchId ? (
                 <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                   <Building2 className="w-3.5 h-3.5 text-indigo-500" />
                   <span>{user.branchId.code || user.branchId.name}</span>
-                </span>
-              ) : user?.role === 'admin' ? (
-                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-                  <Building2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>All Branches</span>
                 </span>
               ) : null}
 

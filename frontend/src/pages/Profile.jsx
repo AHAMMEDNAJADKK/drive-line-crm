@@ -98,11 +98,21 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-6 text-sm">
           <div>
             <span className="text-gray-500 text-xs block mb-0.5">Employee ID</span>
             <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-              {user?.employeeId}
+              {user?.employeeId || 'N/A'}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-500 text-xs block mb-0.5">Assigned Branch</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-100">
+              {user?.role === 'superadmin'
+                ? 'All Branches (Global)'
+                : user?.branchId?.name
+                ? `${user.branchId.name}${user.branchId.code ? ` (${user.branchId.code})` : ''}`
+                : user?.branch || 'Unassigned'}
             </span>
           </div>
           <div>

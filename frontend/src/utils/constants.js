@@ -45,7 +45,7 @@ export const LEAD_SOURCES = [
 ];
 
 // ─── Employee Roles ────────────────────────────────────────────────────────
-export const EMPLOYEE_ROLES = ['admin', 'hr', 'employee'];
+export const EMPLOYEE_ROLES = ['superadmin', 'admin', 'hr', 'employee'];
 
 // ─── Status Badge Colours (Tailwind classes) ───────────────────────────────
 export const STATUS_COLORS = {
@@ -67,6 +67,7 @@ export const PRIORITY_COLORS = {
 
 // ─── Role Badge Colours ────────────────────────────────────────────────────
 export const ROLE_COLORS = {
+  superadmin: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40',
   admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
   hr: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
   employee: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',

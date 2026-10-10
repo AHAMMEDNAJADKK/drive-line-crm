@@ -4,7 +4,8 @@ const Branch = require('../models/Branch');
 const VehicleSpecialization = require('../models/VehicleSpecialization');
 
 const { assertObjectId } = require('../utils/ids');
-const { STAFF_ROLES, isAdmin, isHrStaff, isEmployee } = require('../utils/roles');
+const { STAFF_ROLES, isSuperAdmin, isAdmin, isAnyAdmin, isHrStaff, isEmployee } = require('../utils/roles');
+const { logAudit } = require('../utils/auditLogger');
 const {
   normalizeVehicleSpecialization
 } = require('../utils/vehicleSpecializations');
@@ -339,9 +340,18 @@ const createEmployee = async (
     throw new Error('Invalid role');
   }
 
-  // HR cannot create admin
-  if (isHrStaff(currentUser) && selectedRole === 'admin') {
-    throw new Error('HR cannot create administrator accounts');
+  // Only superadmin can create superadmin accounts
+  if (selectedRole === 'superadmin' && !isSuperAdmin(currentUser)) {
+    const error = new Error('Only Super Admin can grant Super Admin privileges');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // HR cannot create admin or superadmin
+  if (isHrStaff(currentUser) && (selectedRole === 'admin' || selectedRole === 'superadmin')) {
+    const error = new Error('HR cannot create administrator accounts');
+    error.statusCode = 403;
+    throw error;
   }
 
   const selectedStatus = status || 'active';
@@ -362,8 +372,8 @@ const createEmployee = async (
     }
     const branchDoc = await Branch.findById(finalBranchId);
     if (branchDoc) finalBranchName = branchDoc.name;
-  } else if (isAdmin(currentUser)) {
-    // Admin can assign any branch
+  } else if (isAnyAdmin(currentUser)) {
+    // Admin or Super Admin can assign any branch
     if (branchId) {
       assertObjectId(branchId, 'Branch ID');
       const branchDoc = await Branch.findById(branchId);
@@ -374,7 +384,7 @@ const createEmployee = async (
   }
 
   // HR and Employee MUST belong to a branch (unless existing legacy data)
-  if (selectedRole !== 'admin' && !finalBranchId) {
+  if (selectedRole !== 'admin' && selectedRole !== 'superadmin' && !finalBranchId) {
     throw new Error(`A valid branch assignment is required for ${selectedRole.toUpperCase()}`);
   }
 
@@ -457,10 +467,25 @@ const updateEmployee = async (
     throw new Error('Employee not found');
   }
 
+  // Privilege check: only superadmin can modify a superadmin
+  if (user.role === 'superadmin' && !isSuperAdmin(currentUser)) {
+    const error = new Error('Only Super Admin can modify a Super Admin account');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Prevent last active superadmin from demotion or deactivation
+  if (user.role === 'superadmin' && ((role && role !== 'superadmin') || status === 'inactive')) {
+    const activeSuperAdmins = await User.countDocuments({ role: 'superadmin', status: 'active' });
+    if (activeSuperAdmins <= 1) {
+      throw new Error('Cannot demote or deactivate the only active Super Admin');
+    }
+  }
+
   // Branch check for HR
-  if (currentUser && !isAdmin(currentUser)) {
+  if (currentUser && !isAnyAdmin(currentUser)) {
     assertBranchAccess(user.branchId, currentUser, 'modify');
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'superadmin') {
       throw new Error('HR cannot elevate staff to admin');
     }
   }
@@ -531,6 +556,13 @@ const updateEmployee = async (
       throw new Error('Invalid role');
     }
 
+    // Only superadmin can assign or revoke superadmin role
+    if ((role === 'superadmin' || user.role === 'superadmin') && !isSuperAdmin(currentUser)) {
+      const error = new Error('Only Super Admin can grant or revoke Super Admin privileges');
+      error.statusCode = 403;
+      throw error;
+    }
+
     user.role = role;
   }
 
@@ -567,8 +599,8 @@ const updateEmployee = async (
       ) || '';
   }
 
-  // Branch update: ONLY Admin can change branch assignment
-  if (branchId !== undefined && isAdmin(currentUser)) {
+  // Branch update: ONLY Admin or Super Admin can change branch assignment
+  if (branchId !== undefined && isAnyAdmin(currentUser)) {
     if (branchId) {
       assertObjectId(branchId, 'Branch ID');
       const branchDoc = await Branch.findById(branchId);
@@ -611,7 +643,22 @@ const toggleEmployeeStatus = async (id, status, currentUser) => {
     throw new Error('Employee not found');
   }
 
-  if (currentUser && !isAdmin(currentUser)) {
+  if (user.role === 'superadmin' && !isSuperAdmin(currentUser)) {
+    const error = new Error('Only Super Admin can modify Super Admin accounts');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (user.role === 'superadmin' && status === 'inactive') {
+    const activeSuperAdmins = await User.countDocuments({ role: 'superadmin', status: 'active' });
+    if (activeSuperAdmins <= 1) {
+      const error = new Error('Cannot deactivate the only active Super Admin');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  if (currentUser && !isAnyAdmin(currentUser)) {
     assertBranchAccess(user.branchId, currentUser, 'modify');
   }
 
@@ -635,7 +682,13 @@ const resetEmployeePassword = async (
     throw new Error('Employee not found');
   }
 
-  if (currentUser && !isAdmin(currentUser)) {
+  if (user.role === 'superadmin' && !isSuperAdmin(currentUser)) {
+    const error = new Error('Only Super Admin can reset Super Admin passwords');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (currentUser && !isAnyAdmin(currentUser)) {
     assertBranchAccess(user.branchId, currentUser, 'modify');
   }
 
